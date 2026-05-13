@@ -17,6 +17,7 @@
       "Bash(git status)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "hooks": {
     "PostToolUse": [
       {
