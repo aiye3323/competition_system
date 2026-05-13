@@ -90,3 +90,57 @@
 - 当用户要求”继续”或”下一步”时，请先查看 `/开发日志/` 中最新日期的文件，确认进度
 - 当需要查询设计规范时，优先读取 `/docs/` 下对应文档
 - **禁止**在根目录随意创建散落文件，所有代码必须放入 `/backend` 或 `/frontend`
+
+---
+
+## 七、Git 提交规范
+
+**每次完成一个逻辑单元后立即提交**，绝不累积 40+ 文件改动而无一次提交。
+
+- 提交粒度：修完一个 bug → 提交；完成一个模块 → 提交；完成一轮样式调整 → 提交
+- 提交信息用中文描述改动内容
+- 危险操作前先 `git status` 确认工作区状态
+- 大量文件改动时（10+），分批提交：核心逻辑 → 模板 → 样式
+
+---
+
+## 八、CSS 调试升级规则
+
+**如果 CSS 样式问题（文字截断、溢出、定位）尝试 2 次仍然无效，立即停止纯 CSS 方案，改用以下之一：**
+
+1. **JavaScript 方案**：动态测量元素宽度，用 JS 截断文本
+2. **HTML 重构**：改变组件 DOM 结构（如把提示移到父组件外侧）
+3. **设计妥协**：与用户确认是否可以接受折中方案（固定宽度 vs 自适应）
+
+禁止重复尝试同一类 CSS 方案的变体（`deep` → `inline` → `global` → `reposition`）。
+
+---
+
+## 九、前后端连通性检查清单
+
+调试前后端通信问题前，**依次验证以下 5 层**：
+
+| 层 | 检查命令/方法 | 常见问题 |
+|----|-------------|---------|
+| 网络绑定 | `netstat -ano \| grep <port>` | Vite 仅绑定 IPv6、端口被占用 |
+| 代理配置 | 读 `vite.config.js` proxy 配置 | 代理路径不匹配后端路由 |
+| CORS | `curl -v -H 'Origin: <frontend>' <backend>/api/test` | origin 不在白名单 |
+| 数据库 Schema | `SHOW COLUMNS FROM <table>` vs JPA 实体字段 | 残留旧字段如 `f_user_id` |
+| 数据值 | `SELECT DISTINCT <col> FROM <table>` vs 前端常量 | 值不匹配如 `A` vs `A类` |
+
+**前置检查脚本**（调试前先跑一遍）：
+```bash
+netstat -ano | grep 8080 | grep LISTENING  # 后端端口
+curl -s http://localhost:5173 | head -1      # 前端可访问
+curl -s http://localhost:8080/api/test       # 后端可访问
+```
+
+---
+
+## 十、中文路径与编码
+
+涉及含中文文件路径时：
+- `application.properties` 中**不要写含中文的绝对路径**，用 `./相对路径` 替代
+- Java 代码中用 `Paths.get(...).toAbsolutePath()` 动态解析
+- 用 `FileSystemResource` 替代 `UrlResource` 避免 URI 编码问题
+- 文件下载时对 `filename` 参数做 `replaceAll("[\"\\n\\r]", "_")` 防注入
