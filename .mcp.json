@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mysql": {
+      "command": "npx",
+      "args": ["-y", "@benborla29/mcp-server-mysql", "mysql://root:123456@localhost:3306/competition_db"]
+    }
+  }
+}

@@ -11,7 +11,23 @@
       "Bash(\"C:/Program Files/MySQL/MySQL Server 5.7/bin/mysql.exe\" -u root -p123456 competition_db -e \"SELECT f_username, f_password FROM t_user WHERE f_username='admin';\")",
       "Bash(curl -s http://localhost:8080/api/test)",
       "Bash(curl -s -H \"Authorization: Bearer test\" http://localhost:8080/api/competition/1)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"e:/大三/企业级应用开发/competition_system\" && git add -A && git diff --cached --quiet || git commit -m \"auto: 代码变更\" --no-verify"
+          }
+        ]
+      }
     ]
   }
 }
