@@ -1,1 +1,0 @@
-{"code":400,"message":"could not execute statement [Field 'f_receiver_id' doesn't have a default value] [insert into t_notification (f_competition_id,f_content,f_create_time,f_is_deleted,f_is_read,f_title,f_update_time,f_user_id) values (?,?,?,?,?,?,?,?)]","data":null}

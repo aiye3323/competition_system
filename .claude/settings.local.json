@@ -29,7 +29,10 @@
       "Bash(mkdir -p \"e:/大三/企业级应用开发/competition_system/.claude/insights\")",
       "Bash(cp \"C:/Users/Administrator/.claude/usage-data/report.html\" \"e:/大三/企业级应用开发/competition_system/.claude/insights/report.html\")",
       "Bash(cp -r \"C:/Users/Administrator/.claude/usage-data/facets\" \"e:/大三/企业级应用开发/competition_system/.claude/insights/facets\")",
-      "Bash(npm search *)"
+      "Bash(npm search *)",
+      "Bash(rm -v backend/ap.json backend/login_response.json backend/p1.json frontend/login_r.json login.json)",
+      "Bash(rm -rf uploads/)",
+      "Bash(git rm *)"
     ]
   }
 }
