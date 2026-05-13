@@ -1,0 +1,190 @@
+/* ========== CSS 变量 ========== */
+:root {
+  /* 背景色 */
+  --app-bg: #F8F9FA;
+  --card-bg: #FFFFFF;
+  --nav-bg: #FFFFFF;
+  --header-bg: #FFFFFF;
+  --hover-bg: #F5F7FA;
+  --hover-bg-light: #EBF5FF;
+
+  /* 文本色 */
+  --text-primary: #1A1A2E;
+  --text-regular: #495057;
+  --text-secondary: #868E96;
+  --text-placeholder: #ADB5BD;
+
+  /* 边框色 */
+  --border-color: #E9ECEF;
+  --border-light: #F1F3F5;
+  --border-lighter: #F8F9FA;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-default: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.10);
+
+  /* 主题色 - 科技蓝 */
+  --primary-color: #1883E5;
+  --primary-light: #EBF5FF;
+  --success-color: #2B8A3E;
+  --warning-color: #E67700;
+  --danger-color: #E03131;
+  --info-color: #868E96;
+
+  /* 布局 */
+  --nav-height: 60px;
+  --card-radius: 12px;
+  --card-padding: 20px;
+  --content-max-width: 1200px;
+
+  /* 登录页渐变 */
+  --login-gradient-start: #1883E5;
+  --login-gradient-end: #0E5CAD;
+
+  /* 过渡 */
+  --transition-speed: 0.25s;
+}
+
+/* ========== 全局重置 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--app-bg);
+  color: var(--text-primary);
+}
+
+/* ========== Element Plus 全局覆盖 ========== */
+.el-card {
+  border-radius: var(--card-radius) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-default) !important;
+}
+
+.el-table {
+  border-radius: var(--card-radius);
+  overflow: hidden;
+}
+
+.el-button--primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.el-button--primary:hover {
+  background-color: #1473CC;
+  border-color: #1473CC;
+}
+
+.el-menu-item.is-active {
+  color: var(--primary-color) !important;
+  border-bottom-color: var(--primary-color) !important;
+}
+
+/* ========== Utility 类 ========== */
+
+/* 页面容器 — 详情/表单页使用 */
+.page-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* 宽页面容器 — 列表页使用 */
+.page-container-wide {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+/* 页面标题行 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.page-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+/* 分页包装器 */
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* 卡片包装 */
+.card-wrapper {
+  margin-bottom: 20px;
+}
+
+/* 文本颜色 */
+.text-secondary {
+  color: var(--text-secondary);
+}
+.text-regular {
+  color: var(--text-regular);
+}
+
+/* ========== 操作按钮组 ========== */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* 统一表格内操作按钮 */
+.el-table .el-button--small.is-link {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+/* ========== 页面过渡动画 ========== */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity var(--transition-speed), transform var(--transition-speed);
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ========== 修复上传提示文字被截断 ========== */
+.el-form-item .el-upload {
+  overflow: visible !important;
+}
+
+.el-form-item .el-upload__tip {
+  white-space: normal !important;
+  word-break: break-word !important;
+  line-height: 1.6 !important;
+  overflow: visible !important;
+  height: auto !important;
+  display: block !important;
+}
+
+/* 确保 form-item 内容区不裁切上传组件 */
+.el-form-item__content {
+  overflow: visible !important;
+}
