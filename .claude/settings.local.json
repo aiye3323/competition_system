@@ -23,7 +23,13 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Read(//c/Users/Administrator/.claude/**)",
+      "Bash(mkdir -p \"e:/大三/企业级应用开发/competition_system/.claude/insights\")",
+      "Bash(cp \"C:/Users/Administrator/.claude/usage-data/report.html\" \"e:/大三/企业级应用开发/competition_system/.claude/insights/report.html\")",
+      "Bash(cp -r \"C:/Users/Administrator/.claude/usage-data/facets\" \"e:/大三/企业级应用开发/competition_system/.claude/insights/facets\")",
+      "Bash(npm search *)"
     ]
   }
 }
