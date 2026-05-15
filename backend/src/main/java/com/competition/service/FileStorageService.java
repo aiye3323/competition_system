@@ -52,6 +52,11 @@ public class FileStorageService {
 
     @Transactional
     public FileEntity storeFile(MultipartFile file, Long uploaderId) {
+        return storeFile(file, uploaderId, null);
+    }
+
+    @Transactional
+    public FileEntity storeFile(MultipartFile file, Long uploaderId, String materialType) {
         String originalName = file.getOriginalFilename();
         String extension = "";
         if (originalName != null && originalName.contains(".")) {
@@ -79,6 +84,7 @@ public class FileStorageService {
         fileEntity.setStoragePath(relativePath);
         fileEntity.setFileSize(file.getSize());
         fileEntity.setFileType(fileType);
+        fileEntity.setMaterialType(materialType);
         fileEntity.setUploaderId(uploaderId);
         fileEntity.setUploadTime(LocalDateTime.now());
 

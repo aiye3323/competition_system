@@ -33,34 +33,62 @@ public class FileController {
         this.fileRepository = fileRepository;
     }
 
+    /**
+     * 检查当前用户是否有权访问该文件
+     * ADMIN/SECRETARY/LEADER 可访问所有文件
+     * STUDENT/TEACHER 只能访问自己上传的文件
+     */
+    private boolean canAccessFile(FileEntity file, Authentication auth) {
+        if (auth == null) return false;
+        Long userId = (Long) auth.getPrincipal();
+        String role = auth.getAuthorities().stream()
+                .findFirst().map(Object::toString).orElse("");
+        // 管理员、秘书、领导可访问所有
+        if (role.contains("ADMIN") || role.contains("SECRETARY") || role.contains("LEADER")) {
+            return true;
+        }
+        // 学生/教师只能访问自己上传的文件
+        return file.getUploaderId() != null && file.getUploaderId().equals(userId);
+    }
+
+    private String getUserRole(Authentication auth) {
+        if (auth == null) return "";
+        return auth.getAuthorities().stream()
+                .findFirst().map(Object::toString).orElse("");
+    }
+
     @PostMapping("/upload")
     public Result<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file,
+                                                  @RequestParam(value = "materialType", required = false) String materialType,
                                                   Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        FileEntity fileEntity = fileStorageService.storeFile(file, userId);
+        FileEntity fileEntity = fileStorageService.storeFile(file, userId, materialType);
 
         Map<String, Object> data = new HashMap<>();
         data.put("id", fileEntity.getId());
         data.put("originalName", fileEntity.getOriginalName());
         data.put("fileSize", fileEntity.getFileSize());
         data.put("fileType", fileEntity.getFileType());
+        data.put("materialType", fileEntity.getMaterialType());
 
         return Result.success(data);
     }
 
     @PostMapping("/upload/batch")
     public Result<List<Map<String, Object>>> uploadFiles(@RequestParam("files") List<MultipartFile> files,
+                                                         @RequestParam(value = "materialType", required = false) String materialType,
                                                          Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         List<Map<String, Object>> resultList = new ArrayList<>();
 
         for (MultipartFile file : files) {
-            FileEntity fileEntity = fileStorageService.storeFile(file, userId);
+            FileEntity fileEntity = fileStorageService.storeFile(file, userId, materialType);
             Map<String, Object> data = new HashMap<>();
             data.put("id", fileEntity.getId());
             data.put("originalName", fileEntity.getOriginalName());
             data.put("fileSize", fileEntity.getFileSize());
             data.put("fileType", fileEntity.getFileType());
+            data.put("materialType", fileEntity.getMaterialType());
             resultList.add(data);
         }
 
@@ -73,6 +101,9 @@ public class FileController {
         if (fileEntity == null) {
             return ResponseEntity.status(404).body(Result.error(404, "文件记录不存在"));
         }
+
+        // inline 预览不检查权限：浏览器 <img>/<iframe> 不发送 Authorization header
+        // 下载端点 /{id}/download 有权限校验
 
         Resource resource;
         try {
@@ -87,16 +118,25 @@ public class FileController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + safeName + "\"")
+                        "inline; filename=\""
+                                + safeName
+                                + "\"; filename*=UTF-8''"
+                                + encodeRFC5987(safeName))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600")
                 .body(resource);
     }
 
     @GetMapping("/{id}/download")
     public ResponseEntity<?> downloadFile(@PathVariable Long id,
-                                          @RequestParam(required = false) String filename) {
+                                          @RequestParam(required = false) String filename,
+                                          Authentication authentication) {
         FileEntity fileEntity = fileRepository.findById(id).orElse(null);
         if (fileEntity == null) {
             return ResponseEntity.status(404).body(Result.error(404, "文件记录不存在"));
+        }
+
+        if (!canAccessFile(fileEntity, authentication)) {
+            return ResponseEntity.status(403).body(Result.error(403, "无权下载该文件"));
         }
 
         Resource resource;
@@ -107,7 +147,21 @@ public class FileController {
         }
 
         String contentType = fileStorageService.getContentType(fileEntity.getStoragePath());
-        String displayName = filename != null ? filename : fileEntity.getOriginalName();
+
+        // 文件名优先级：前端传入 > materialType + ext > originalName
+        String displayName;
+        if (filename != null) {
+            displayName = filename;
+        } else if (fileEntity.getMaterialType() != null && !fileEntity.getMaterialType().isEmpty()) {
+            String ext = "";
+            String orig = fileEntity.getOriginalName();
+            if (orig != null && orig.contains(".")) {
+                ext = orig.substring(orig.lastIndexOf("."));
+            }
+            displayName = fileEntity.getMaterialType() + ext;
+        } else {
+            displayName = fileEntity.getOriginalName();
+        }
         displayName = displayName.replaceAll("[\"\\n\\r]", "_");
 
         return ResponseEntity.ok()
@@ -154,13 +208,16 @@ public class FileController {
 
     /**
      * 打包下载选中的文件（通过文件 ID 列表）
+     * 支持传入成果信息，用于生成有意义的 ZIP 文件名
      */
     @PostMapping("/download-selected")
-    public ResponseEntity<?> downloadSelectedFiles(@RequestBody Map<String, List<Long>> body) {
-        List<Long> fileIds = body.get("fileIds");
-        if (fileIds == null || fileIds.isEmpty()) {
+    public ResponseEntity<?> downloadSelectedFiles(@RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Integer> rawIds = (List<Integer>) body.get("fileIds");
+        if (rawIds == null || rawIds.isEmpty()) {
             return ResponseEntity.status(400).body(Result.error(400, "未选择文件"));
         }
+        List<Long> fileIds = rawIds.stream().map(Long::valueOf).toList();
 
         List<FileEntity> files = fileRepository.findAllById(fileIds);
         if (files.isEmpty()) {
@@ -169,10 +226,34 @@ public class FileController {
 
         byte[] zipBytes = fileStorageService.zipFiles(files);
 
+        // 动态生成 ZIP 文件名
+        String typeName = (String) body.getOrDefault("typeName", "");
+        String applicantName = (String) body.getOrDefault("applicantName", "");
+        String achievementName = (String) body.getOrDefault("achievementName", "");
+
+        String zipName;
+        if (!typeName.isEmpty() && !applicantName.isEmpty() && !achievementName.isEmpty()) {
+            // 单成果：项目_张三_预览测试_选中材料.zip
+            String safeAchievement = achievementName.length() > 20
+                    ? achievementName.substring(0, 20) : achievementName;
+            zipName = typeName + "_" + applicantName + "_" + safeAchievement + "_选中材料.zip";
+            zipName = zipName.replaceAll("[\\\\/:*?\"<>|\\s]", "");
+        } else {
+            // 批量跨成果：批量成果_操作人_日期.zip
+            String operator = !applicantName.isEmpty() ? applicantName : "用户";
+            String date = java.time.LocalDate.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+            zipName = "批量成果_" + operator + "_" + date + ".zip";
+            zipName = zipName.replaceAll("[\\\\/:*?\"<>|\\s]", "");
+        }
+
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"selected_materials.zip\"")
+                        "attachment; filename=\""
+                                + zipName
+                                + "\"; filename*=UTF-8''"
+                                + encodeRFC5987(zipName))
                 .body(zipBytes);
     }
 

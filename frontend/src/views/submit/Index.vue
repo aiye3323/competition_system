@@ -2,8 +2,20 @@
   <div style="max-width:850px; margin:0 auto;">
     <h2>提交成果</h2>
 
+    <!-- 步骤引导 -->
+    <div class="submit-steps">
+      <div class="step active"><span class="step-num">1</span> 选择类型</div>
+      <div class="step-arrow">→</div>
+      <div class="step"><span class="step-num">2</span> 填写信息</div>
+      <div class="step-arrow">→</div>
+      <div class="step"><span class="step-num">3</span> 上传材料</div>
+      <div class="step-arrow">→</div>
+      <div class="step"><span class="step-num">4</span> 提交审核</div>
+    </div>
+
     <!-- 类型选择 -->
-    <el-card style="margin:20px 0;">
+    <el-card style="margin:16px 0;">
+      <template #header><span style="font-weight:600">第1步：选择成果类型</span></template>
       <el-radio-group v-model="currentType" size="large" @change="onTypeChange">
         <el-radio-button value="competition">学科竞赛</el-radio-button>
         <el-radio-button value="project">创新项目</el-radio-button>
@@ -58,13 +70,13 @@
         <el-form-item label="参赛选手"><el-input v-model="compForm.participants" type="textarea" :rows="2" placeholder="多人用逗号分隔" /></el-form-item>
         <el-divider>证明材料</el-divider>
         <el-form-item label="获奖证书">
-          <FileUpload hint="支持 JPG、PNG 格式，单个文件不超过10MB（最多上传5张）" @update:file-ids="compCertIds = $event" />
+          <FileUpload material-type="获奖证书" :area-config="competitionAreas[0]" @update:file-ids="compCertIds = $event" />
         </el-form-item>
         <el-form-item label="现场合影">
-          <FileUpload hint="支持 JPG、PNG 格式，单个文件不超过10MB（最多上传5张）" @update:file-ids="compPhotoIds = $event" />
+          <FileUpload material-type="现场合影" :area-config="competitionAreas[1]" @update:file-ids="compPhotoIds = $event" />
         </el-form-item>
         <el-form-item label="其他材料">
-          <FileUpload hint="支持 JPG、PNG、PDF、ZIP 格式，单个文件不超过10MB" @update:file-ids="compOtherIds = $event" />
+          <FileUpload material-type="其他材料" :area-config="competitionAreas[2]" @update:file-ids="compOtherIds = $event" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitting" @click="handleSubmitCompetition">提交竞赛成果</el-button>
@@ -102,13 +114,13 @@
         <el-form-item label="立项时间"><el-date-picker v-model="projForm.establishTime" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" /></el-form-item>
         <el-divider>证明材料</el-divider>
         <el-form-item label="立项申报书">
-          <FileUpload hint="支持 DOC、DOCX、PDF 格式，单个文件不超过10MB" @update:file-ids="projProposalIds = $event" />
+          <FileUpload material-type="立项申报书" :area-config="projectAreas[0]" @update:file-ids="projProposalIds = $event" />
         </el-form-item>
         <el-form-item label="结题材料">
-          <FileUpload hint="支持 ZIP 格式（包含结题报告、成果材料等），不超过20MB" @update:file-ids="projConclusionIds = $event" />
+          <FileUpload material-type="结题材料" :area-config="projectAreas[1]" @update:file-ids="projConclusionIds = $event" />
         </el-form-item>
         <el-form-item label="结题证书">
-          <FileUpload hint="支持 JPG、PNG、PDF 格式，单个文件不超过10MB" @update:file-ids="projCertIds = $event" />
+          <FileUpload material-type="结题证书" :area-config="projectAreas[2]" @update:file-ids="projCertIds = $event" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitting" @click="handleSubmitProject">提交创新项目</el-button>
@@ -147,13 +159,13 @@
         </el-row>
         <el-divider>证明材料</el-divider>
         <el-form-item label="投稿初稿">
-          <FileUpload hint="支持 PDF 格式，单个文件不超过10MB" @update:file-ids="paperDraftIds = $event" />
+          <FileUpload material-type="投稿初稿" :area-config="paperAreas[0]" @update:file-ids="paperDraftIds = $event" />
         </el-form-item>
         <el-form-item label="录用终稿">
-          <FileUpload hint="支持 PDF 格式，单个文件不超过10MB" @update:file-ids="paperFinalIds = $event" />
+          <FileUpload material-type="录用终稿" :area-config="paperAreas[1]" @update:file-ids="paperFinalIds = $event" />
         </el-form-item>
         <el-form-item label="审稿意见">
-          <FileUpload hint="支持 PDF 格式，单个文件不超过10MB" @update:file-ids="paperReviewIds = $event" />
+          <FileUpload material-type="审稿意见" :area-config="paperAreas[2]" @update:file-ids="paperReviewIds = $event" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitting" @click="handleSubmitPaper">提交论文成果</el-button>
@@ -186,10 +198,10 @@
         </el-form-item>
         <el-divider>证明材料</el-divider>
         <el-form-item label="申报材料">
-          <FileUpload hint="支持 ZIP 格式（包含源代码、用户手册等），不超过20MB" @update:file-ids="swMaterialIds = $event" />
+          <FileUpload material-type="申报材料" :area-config="softwareAreas[0]" @update:file-ids="swMaterialIds = $event" />
         </el-form-item>
         <el-form-item label="证书扫描件">
-          <FileUpload hint="支持 PNG 格式，单个文件不超过10MB" @update:file-ids="swCertIds = $event" />
+          <FileUpload material-type="证书扫描件" :area-config="softwareAreas[1]" @update:file-ids="swCertIds = $event" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitting" @click="handleSubmitSoftware">提交软件著作</el-button>
@@ -208,6 +220,7 @@ import { submitProject } from '@/api/project'
 import { submitPaper } from '@/api/paper'
 import { submitSoftware } from '@/api/software'
 import FileUpload from '@/components/FileUpload.vue'
+import { competitionAreas, projectAreas, paperAreas, softwareAreas } from '@/utils/uploadConfig'
 
 const currentType = ref('competition')
 const submitting = ref(false)
@@ -304,3 +317,53 @@ function onTypeChange() {
   // 切换类型时不做额外处理
 }
 </script>
+
+<style scoped>
+.submit-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.step.active {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--border-light);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.step.active .step-num {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.step-arrow {
+  color: var(--text-placeholder);
+  font-size: 14px;
+}
+</style>

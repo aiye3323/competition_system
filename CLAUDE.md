@@ -15,6 +15,7 @@
 | 数据库设计规范 | `/docs/数据库设计规范.md` | 表结构、字段类型、命名规范 |
 | 产品设计策略 | `/PRODUCT.md` | 用户画像、品牌个性、设计原则（Impeccable） |
 | 视觉设计系统 | `/DESIGN.md` | 配色/字体/布局/组件/动效规范（Impeccable） |
+| 文件命名规范 | `/命名规范.md` | 四种成果类型文件命名规则 |
 | 开发步骤计划 | `/开发步骤计划.md` | 7个阶段详细任务分解（项目根目录） |
 | 接口设计规范 | `/docs/接口设计规范.md` | RESTful API 设计约定 |
 | 开发日志目录 | `/开发日志/` | 每天自动记录完成/待办事项 |
@@ -220,3 +221,34 @@ curl -s http://localhost:8080/api/test       # 后端可访问
 - Java 代码中用 `Paths.get(...).toAbsolutePath()` 动态解析
 - 用 `FileSystemResource` 替代 `UrlResource` 避免 URI 编码问题
 - 文件下载时对 `filename` 参数做 `replaceAll("[\"\\n\\r]", "_")` 防注入
+
+---
+
+## 十一、模块化架构 & 扩展指南
+
+### 新增科研成果类型（如专利、获奖等）步骤：
+
+| 步骤 | 文件 | 操作 |
+|------|------|------|
+| 1 | `backend/.../common/AchievementType.java` | 枚举添加类型常量 |
+| 2 | `backend/.../entity/` | 创建 Entity 类（参考 Competition.java） |
+| 3 | `backend/.../repository/` | 创建 Repository 接口 |
+| 4 | `backend/.../service/` | 创建 Service 类 |
+| 5 | `backend/.../controller/` | 创建 Controller 类 |
+| 6 | `backend/.../common/AchievementServiceRegistry.java` | 注册新 Repository |
+| 7 | `frontend/src/utils/uploadConfig.js` | 添加上传区域配置 |
+| 8 | `frontend/src/utils/fileNaming.js` | TYPE_LABEL 添加映射 |
+| 9 | `frontend/src/router/index.js` | 添加路由 |
+| 10 | `frontend/src/views/` | 创建列表/详情/提交页面 |
+
+### 预留接口
+
+| 接口 | 说明 | 扩展方式 |
+|------|------|---------|
+| `FileEntity.relatedType` | 文件关联的成果类型 | 新增类型字符串即可 |
+| `AchievementType` 枚举 | 统一类型管理 | 添加枚举常量 |
+| `AchievementServiceRegistry` | 类型→Repository 映射 | switch 添加分支 |
+| `uploadConfig.js` | 前端上传区域配置 | 添加新数组 |
+| `fileNaming.js TYPE_LABEL` | 命名类型映射 | 添加键值对 |
+| `/api/statistics/dashboard` | 统计接口 | 扩展查询逻辑 |
+| JWT `role` 字段 | 角色权限 | 新增角色 + SecurityConfig 配置

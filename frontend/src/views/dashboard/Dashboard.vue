@@ -44,6 +44,34 @@
       </div>
     </div>
 
+    <!-- 快捷操作 -->
+    <div class="quick-actions">
+      <div class="quick-action-card" @click="$router.push('/submit')">
+        <el-icon :size="28"><Plus /></el-icon>
+        <span>提交成果</span>
+      </div>
+      <div class="quick-action-card" @click="$router.push('/competition/list')">
+        <el-icon :size="28"><Trophy /></el-icon>
+        <span>竞赛成果</span>
+      </div>
+      <div class="quick-action-card" @click="$router.push('/project/list')">
+        <el-icon :size="28"><Folder /></el-icon>
+        <span>创新项目</span>
+      </div>
+      <div class="quick-action-card" @click="$router.push('/paper/list')">
+        <el-icon :size="28"><Document /></el-icon>
+        <span>学术论文</span>
+      </div>
+      <div class="quick-action-card" @click="$router.push('/software/list')">
+        <el-icon :size="28"><Stamp /></el-icon>
+        <span>软件著作</span>
+      </div>
+      <div class="quick-action-card" @click="$router.push('/achievement/public')">
+        <el-icon :size="28"><View /></el-icon>
+        <span>全院成果</span>
+      </div>
+    </div>
+
     <!-- 图表行 -->
     <el-row :gutter="20" class="chart-row">
       <el-col :span="12">
@@ -255,6 +283,44 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 快捷操作 */
+.quick-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.quick-action-card {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  cursor: pointer;
+  color: var(--primary-color);
+  transition: all var(--transition-fast);
+}
+
+.quick-action-card:hover {
+  background: var(--primary-light);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.quick-action-card span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-regular);
+  white-space: nowrap;
+}
+
 /* 统计卡片网格 */
 .stat-grid {
   display: grid;

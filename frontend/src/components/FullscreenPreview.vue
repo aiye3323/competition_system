@@ -62,12 +62,29 @@
             class="fs-pdf-iframe"
           />
 
-          <!-- Office 文档预览 (DOC/DOCX/XLS/XLSX/PPT/PPTX) -->
-          <iframe
-            v-else-if="isOfficeDoc"
-            :src="officeViewerUrl"
-            class="fs-pdf-iframe"
-          />
+          <!-- Word DOCX 预览 (mammoth.js 转 HTML) -->
+          <div v-else-if="isWordDocx" class="fs-docx-viewer">
+            <WordPreviewModal
+              :file-id="currentFile?.id || extractIdFromUrl(currentUrl)"
+              :file-name="currentFile?.originalName || ''"
+            />
+          </div>
+
+          <!-- 旧版 .doc — 不支持在线预览 -->
+          <div v-else-if="isLegacyDoc" class="fs-unsupported">
+            <el-icon :size="72"><Document /></el-icon>
+            <p>旧版 .doc 文档暂不支持在线预览</p>
+            <p class="fs-hint">请下载后使用 Word 查看</p>
+            <el-button type="primary" @click="downloadCurrent">下载文件</el-button>
+          </div>
+
+          <!-- 其他 Office (XLS/XLSX/PPT/PPTX) -->
+          <div v-else-if="isOfficeDoc" class="fs-unsupported">
+            <el-icon :size="72"><Document /></el-icon>
+            <p>Office 文档暂不支持在线预览</p>
+            <p class="fs-hint">请下载后使用对应软件查看</p>
+            <el-button type="primary" @click="downloadCurrent">下载文件</el-button>
+          </div>
 
           <!-- 文本预览 -->
           <div v-else-if="isTxt" class="fs-text-viewer">
@@ -128,9 +145,11 @@
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import {
   Download, Close, ArrowLeft, ArrowRight,
-  ZoomIn, ZoomOut, RefreshLeft, WarningFilled
+  ZoomIn, ZoomOut, RefreshLeft, WarningFilled, Document
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import WordPreviewModal from '@/components/WordPreviewModal.vue'
+import { generateFileName } from '@/utils/fileNaming'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -139,7 +158,9 @@ const props = defineProps({
   /** 起始索引 */
   initialIndex: { type: Number, default: 0 },
   /** 下载文件名上下文 */
-  contextLabel: { type: String, default: '' }
+  contextLabel: { type: String, default: '' },
+  /** 命名参数 { achievementType, projectName, userName } */
+  namingParams: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
@@ -167,9 +188,19 @@ const isPdf = computed(() => {
   return name.endsWith('.pdf')
 })
 
+const isWordDocx = computed(() => {
+  const name = (currentFile.value?.originalName || currentFile.value?.url || '').toLowerCase()
+  return name.endsWith('.docx')
+})
+
+const isLegacyDoc = computed(() => {
+  const name = (currentFile.value?.originalName || currentFile.value?.url || '').toLowerCase()
+  return name.endsWith('.doc')
+})
+
 const isOfficeDoc = computed(() => {
   const name = (currentFile.value?.originalName || currentFile.value?.url || '').toLowerCase()
-  return /\.(doc|docx|xls|xlsx|ppt|pptx)$/i.test(name)
+  return /\.(xls|xlsx|ppt|pptx)$/i.test(name)
 })
 
 const isTxt = computed(() => {
@@ -191,16 +222,28 @@ const isZip = computed(() => {
   return /\.(zip|rar|7z|tar|gz)$/i.test(name)
 })
 
-const officeViewerUrl = computed(() => {
-  const url = currentUrl.value
-  if (!url) return ''
-  const fullUrl = url.startsWith('http') ? url : (window.location.origin + url)
-  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`
-})
-
 // 文本预览内容
 const textContent = ref('')
 let textFetchAbort = null
+
+// Office 文档回退提示
+const showOfficeFallback = ref(false)
+const showDocxFallback = ref(false)
+
+/** 从 URL 中提取文件 ID，如 /api/files/27 → 27 */
+function extractIdFromUrl(url) {
+  const match = (url || '').match(/\/files\/(\d+)/)
+  return match ? parseInt(match[1]) : 0
+}
+
+/** Office Online 预览 URL — 本地 localhost 不可用，回退 mammoth */
+const officeOnlineUrl = computed(() => {
+  const url = currentUrl.value
+  if (!url) return ''
+  if (url.includes('localhost') || url.includes('127.0.0.1')) return ''
+  const fullUrl = url.startsWith('http') ? url : (window.location.origin + url)
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`
+})
 
 // ========== 图片缩放 / 拖拽 ==========
 const scale = ref(1)
@@ -270,23 +313,38 @@ function goNext() {
 }
 
 // ========== 下载 ==========
-function downloadCurrent() {
+async function downloadCurrent() {
   const file = currentFile.value
-  if (!file) return
-  const fileId = file.id
-  if (!fileId) return
-  let url = `/api/files/${fileId}/download`
-  if (props.contextLabel && file.originalName) {
-    const ext = (file.originalName.lastIndexOf('.') >= 0)
-      ? file.originalName.substring(file.originalName.lastIndexOf('.')) : ''
-    url += `?filename=${encodeURIComponent(props.contextLabel + ext)}`
+  if (!file || !file.id) return
+
+  const downloadName = generateFileName({
+    ...props.namingParams,
+    originalName: file.originalName || ''
+  })
+
+  try {
+    const blob = await request.get(`/files/${file.id}/download`, {
+      responseType: 'blob'
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = downloadName
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch {
+    const url = `/api/files/${file.id}/download`
+    const link = document.createElement('a')
+    link.href = url
+    link.download = downloadName
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
-  const link = document.createElement('a')
-  link.href = url
-  link.style.display = 'none'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
 }
 
 // ========== 关闭 ==========
@@ -347,6 +405,8 @@ async function fetchTextContent(url) {
 
 // 监听当前文件变化，自动加载 TXT 内容
 watch(currentFile, (file) => {
+  showOfficeFallback.value = false
+  showDocxFallback.value = false
   if (file && isTxt.value) {
     fetchTextContent(currentUrl.value)
   } else {
@@ -359,6 +419,8 @@ watch(() => props.modelValue, (val) => {
   if (val) {
     currentIndex.value = Math.max(0, Math.min(props.initialIndex, totalCount.value - 1))
     resetZoom()
+    showOfficeFallback.value = false
+    showDocxFallback.value = false
     visible.value = true
     // 防止背景滚动
     document.body.style.overflow = 'hidden'
@@ -500,6 +562,14 @@ onBeforeUnmount(() => {
   background: #525659;
 }
 
+/* --- DOCX viewer --- */
+.fs-docx-viewer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* --- 文本预览 --- */
 .fs-text-viewer {
   width: 100%;
@@ -541,6 +611,7 @@ onBeforeUnmount(() => {
 }
 .fs-unsupported .el-icon { margin-bottom: 12px; color: #666; }
 .fs-unsupported p { font-size: 16px; margin: 8px 0 20px; }
+.fs-unsupported .fs-hint { font-size: 13px; color: #666; margin-top: -12px; }
 
 /* ======== 底部栏 ======== */
 .fs-bottombar {

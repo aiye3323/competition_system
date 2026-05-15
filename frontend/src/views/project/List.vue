@@ -52,11 +52,11 @@
         <template #default="{ row }">
           <div class="action-buttons">
             <el-button type="primary" link @click="$router.push(`/project/detail/${row.id}`)">详情</el-button>
-            <el-button v-if="isSecretary && row.status === 'PENDING'" type="warning" link @click="handleAudit(row)">审核</el-button>
-            <el-button v-if="isLeader && row.status === 'PENDING_LEADER'" type="warning" link @click="handleAudit(row)">审核</el-button>
             <el-button type="warning" link :disabled="row.status !== 'REJECTED'"
               @click="$router.push(`/project/edit/${row.id}`)">编辑</el-button>
             <el-button type="danger" link @click="handleDelete(row.id)">删除</el-button>
+            <el-button v-if="isSecretary && row.status === 'PENDING'" type="warning" @click="handleAudit(row)">审核</el-button>
+            <el-button v-if="isLeader && row.status === 'PENDING_LEADER'" type="warning" @click="handleAudit(row)">审核</el-button>
           </div>
         </template>
       </el-table-column>

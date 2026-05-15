@@ -26,6 +26,9 @@ public class FileEntity {
     @Column(name = "f_file_type", nullable = false, length = 20)
     private String fileType;
 
+    @Column(name = "f_material_type", length = 50)
+    private String materialType;
+
     @Column(name = "f_related_type", length = 20)
     private String relatedType;
 

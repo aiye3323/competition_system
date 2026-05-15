@@ -47,9 +47,9 @@
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="primary" link @click="$router.push(`/software/detail/${row.id}`)">详情</el-button>
-              <el-button v-if="canAudit(row)" type="warning" link @click="handleAudit(row)">审核</el-button>
               <el-button v-if="row.status === 'REJECTED'" type="warning" link @click="$router.push(`/software/edit/${row.id}`)">修改</el-button>
               <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+              <el-button v-if="canAudit(row)" type="warning" @click="handleAudit(row)">审核</el-button>
             </div>
           </template>
         </el-table-column>

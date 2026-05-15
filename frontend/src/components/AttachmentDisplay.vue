@@ -9,6 +9,9 @@
           :indeterminate="someSelected && !allSelected"
           @change="toggleAll"
         >全选</el-checkbox>
+        <span v-if="selectedIds.length > 0" class="attach-selected-count">
+          已选中 {{ selectedIds.length }} 个文件
+        </span>
         <div class="attach-toolbar-actions">
           <el-button
             v-if="selectedIds.length > 0"
@@ -17,13 +20,6 @@
             @click="downloadSelected"
           >
             <el-icon><Download /></el-icon> 下载选中 ({{ selectedIds.length }})
-          </el-button>
-          <el-button
-            v-if="relatedType && relatedId"
-            size="small"
-            @click="downloadAll"
-          >
-            <el-icon><Folder /></el-icon> 下载全部材料
           </el-button>
         </div>
       </div>
@@ -51,8 +47,11 @@
             <el-icon :size="36"><component :is="fileIcon(file)" /></el-icon>
           </div>
           <div class="attachment-info">
-            <span class="attachment-name" :title="file.originalName || `文件 ${file.id}`">
-              {{ file.originalName || `文件 ${file.id}` }}
+            <span
+              class="attachment-name"
+              :title="'原始文件名：' + (file.originalName || '未知')"
+            >
+              {{ displayName(file) }}
             </span>
             <div class="attachment-actions">
               <el-button
@@ -71,6 +70,28 @@
 
     <!-- ========== 附件缩略图网格 -- URL list mode ========== -->
     <template v-else-if="fileUrls && fileUrls.length > 0">
+      <!-- 操作栏 -->
+      <div v-if="showBatchActions && fileUrls.length > 0" class="attach-toolbar">
+        <el-checkbox
+          :model-value="allSelected"
+          :indeterminate="someSelected && !allSelected"
+          @change="toggleAll"
+        >全选</el-checkbox>
+        <span v-if="selectedUrlIdxs.length > 0" class="attach-selected-count">
+          已选中 {{ selectedUrlIdxs.length }} 个文件
+        </span>
+        <div class="attach-toolbar-actions">
+          <el-button
+            v-if="selectedUrlIdxs.length > 0"
+            type="primary"
+            size="small"
+            @click="downloadSelected"
+          >
+            <el-icon><Download /></el-icon> 下载选中 ({{ selectedUrlIdxs.length }})
+          </el-button>
+        </div>
+      </div>
+
       <div class="attachment-grid">
         <div v-for="(file, idx) in fileUrls" :key="idx" class="attachment-item">
           <el-checkbox
@@ -93,8 +114,11 @@
             <el-icon :size="36"><component :is="urlFileIcon(file)" /></el-icon>
           </div>
           <div class="attachment-info">
-            <span class="attachment-name" :title="file.originalName || `文件 ${file.id}`">
-              {{ file.originalName || `文件 ${file.id}` }}
+            <span
+              class="attachment-name"
+              :title="'原始文件名：' + (file.originalName || '未知')"
+            >
+              {{ displayName(file) }}
             </span>
             <div class="attachment-actions">
               <el-button
@@ -119,6 +143,7 @@
       :files="previewFiles"
       :initial-index="previewIndex"
       :context-label="contextLabel"
+      :naming-params="getNamingParams()"
       @close="previewVisible = false"
     />
   </div>
@@ -127,21 +152,27 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Document, Download, Folder, VideoCamera, Picture } from '@element-plus/icons-vue'
+import { Document, Download, VideoCamera, Picture } from '@element-plus/icons-vue'
 import FullscreenPreview from '@/components/FullscreenPreview.vue'
-import { downloadAllFiles, downloadSelectedFiles } from '@/api/file'
-import request from '@/utils/request'
+import { downloadSelectedFiles, downloadSingleFile } from '@/api/file'
+import { generateFileName, generateBatchZipName } from '@/utils/fileNaming'
 
 const props = defineProps({
   files: { type: Array, default: null },
   fileUrls: { type: Array, default: null },
   contextLabel: { type: String, default: '' },
-  /** 成果类型，用于下载全部 */
+  /** 成果类型，用于下载全部 + ZIP 命名 */
   relatedType: { type: String, default: '' },
   /** 成果 ID，用于下载全部 */
   relatedId: { type: [Number, String], default: null },
+  /** 成果名称，用于 ZIP 命名 */
+  achievementName: { type: String, default: '' },
+  /** 申报人，用于 ZIP 命名 */
+  applicantName: { type: String, default: '' },
   /** 是否显示批量操作栏 */
-  showBatchActions: { type: Boolean, default: true }
+  showBatchActions: { type: Boolean, default: true },
+  /** 文件 ID → 材料类型 映射，如 { 27: "获奖证书", 31: "现场合影" } */
+  materialMap: { type: Object, default: () => ({}) }
 })
 
 // ========== 全屏预览 ==========
@@ -162,9 +193,9 @@ function openPreview(mode, idx) {
     }
     return {
       id: f.id,
-      url: fullUrl(f.url),
+      url: f.id ? getFileUrl(f.id) : fullUrl(f.url),
       originalName: f.originalName,
-      fileType: f.fileType || (isImageUrl(f.url) ? 'IMAGE' : 'OTHER')
+      fileType: f.fileType || detectFileTypeFromName(f.originalName || f.url || '')
     }
   })
   previewIndex.value = Math.max(0, Math.min(idx, previewFiles.value.length - 1))
@@ -222,7 +253,6 @@ watch([() => props.relatedId, () => props.files, () => props.fileUrls], () => {
 // ========== 批量下载 ==========
 async function downloadSelected() {
   let ids = selectedIds.value
-  // URL list mode: extract IDs
   if (ids.length === 0 && selectedUrlIdxs.value.length > 0 && props.fileUrls) {
     ids = selectedUrlIdxs.value.map(i => props.fileUrls[i]?.id).filter(Boolean)
   }
@@ -231,24 +261,33 @@ async function downloadSelected() {
     return
   }
 
+  const count = ids.length
+  if (count > 10) {
+    ElMessage.info(`正在打包文件，请稍候…（共 ${count} 个文件）`)
+  }
+
   try {
-    const blob = await downloadSelectedFiles(ids)
-    triggerBlobDownload(blob, 'selected_materials.zip')
+    const body = {
+      fileIds: ids,
+      typeName: props.relatedType
+        ? ({ COMPETITION: '竞赛', PROJECT: '项目', PAPER: '论文', SOFTWARE: '软著' })[props.relatedType] || props.relatedType
+        : '',
+      applicantName: props.applicantName || '',
+      achievementName: props.achievementName || ''
+    }
+    const blob = await downloadSelectedFiles(body)
+    const zipName = generateBatchZipName(getNamingParams())
+    triggerBlobDownload(blob, zipName)
     ElMessage.success('下载完成')
   } catch {
     ElMessage.error('打包下载失败')
   }
 }
 
-function downloadAll() {
-  if (!props.relatedType || !props.relatedId) return
-  const url = downloadAllFiles(props.relatedType, props.relatedId)
-  triggerDownload(url)
-}
-
-function triggerDownload(url) {
+function triggerDownload(url, filename) {
   const link = document.createElement('a')
   link.href = url
+  if (filename) link.download = filename
   link.style.display = 'none'
   document.body.appendChild(link)
   link.click()
@@ -272,14 +311,21 @@ function getFileUrl(id) { return `/api/files/${id}` }
 function fullUrl(url) { return url && url.startsWith('http') ? url : url }
 function isImageUrl(url) { return /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(url || '') }
 
-function getFileExtension(name) {
-  const i = (name || '').lastIndexOf('.')
-  return i >= 0 ? name.substring(i) : ''
+/** 从文件名推断 fileType */
+function detectFileTypeFromName(name) {
+  if (/\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(name)) return 'IMAGE'
+  if (/\.(pdf)$/i.test(name)) return 'DOCUMENT'
+  if (/\.(doc|docx|xls|xlsx|ppt|pptx|txt)$/i.test(name)) return 'DOCUMENT'
+  if (/\.(mp4|avi|mov|webm)$/i.test(name)) return 'VIDEO'
+  if (/\.(zip|rar|7z)$/i.test(name)) return 'ARCHIVE'
+  return 'OTHER'
 }
 
 function canPreview(file) {
   const name = (file.originalName || '').toLowerCase()
-  return file.fileType === 'IMAGE'
+  const isImageLike = file.fileType === 'IMAGE'
+    || /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(name)
+  return isImageLike
     || name.endsWith('.pdf')
     || /\.(doc|docx|xls|xlsx|ppt|pptx|txt)$/i.test(name)
     || file.fileType === 'VIDEO'
@@ -288,10 +334,15 @@ function canPreview(file) {
 
 function canPreviewUrl(file) {
   const name = (file.originalName || file.url || '').toLowerCase()
-  return isImageUrl(file.url)
+  // 图片：fileType 优先，其次是 URL 或原始文件名扩展名
+  const isImageLike = file.fileType === 'IMAGE'
+    || isImageUrl(file.url)
+    || /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(name)
+  return isImageLike
     || name.endsWith('.pdf')
     || /\.(doc|docx|xls|xlsx|ppt|pptx|txt)$/i.test(name)
-    || /\.(mp4|avi|mov)$/i.test(name)
+    || file.fileType === 'VIDEO'
+    || /\.(mp4|avi|mov|webm)$/i.test(name)
 }
 
 function fileIcon(file) {
@@ -324,21 +375,88 @@ const imagePreviewUrls = computed(() => {
   return (props.fileUrls || []).filter(f => isImageUrl(f.url)).map(f => fullUrl(f.url))
 })
 
-// ========== 下载 ==========
-function downloadFile(file) {
-  let url = `/api/files/${file.id}/download`
-  if (props.contextLabel && file.originalName) {
-    url += `?filename=${encodeURIComponent(props.contextLabel + getFileExtension(file.originalName))}`
+/** 获取材料类型标签 */
+function getMaterialLabel(file) {
+  // 1. 最优先：文件自带 materialType（后端存储的字段）
+  if (file.materialType) {
+    return file.materialType
   }
-  triggerDownload(url)
+  // 2. materialMap prop 明确指定
+  if (file.id && props.materialMap[file.id]) {
+    return props.materialMap[file.id]
+  }
+  // 3. 文件名关键词推断
+  const name = (file.originalName || '').toLowerCase()
+  if (name.includes('获奖证书') || name.includes('证书颁发')) return '获奖证书'
+  if (name.includes('证书') || name.includes('cert')) return '获奖证书'
+  if (name.includes('合影') || name.includes('photo') || name.includes('照片')) return '现场合影'
+  if (name.includes('申报书') || name.includes('proposal')) return '立项申报书'
+  if (name.includes('结题材料') || name.includes('结题报告')) return '结题材料'
+  if (name.includes('结题证书') || name.includes('完成证书')) return '结题证书'
+  if (name.includes('投稿初稿') || name.includes('初稿') || name.includes('draft')) return '投稿初稿'
+  if (name.includes('录用终稿') || name.includes('终稿') || name.includes('final')) return '录用终稿'
+  if (name.includes('审稿意见') || name.includes('审稿') || name.includes('review')) return '审稿意见'
+  if (name.includes('申报材料') || name.includes('源代码') || name.includes('代码')) return '申报材料'
+  if (name.includes('扫描件') || name.includes('扫描') || name.includes('scan')) return '证书扫描件'
+  // 4. 无法推断 → 取原始文件名（无扩展名）作为材料类型
+  const extIdx = file.originalName ? file.originalName.lastIndexOf('.') : -1
+  if (extIdx > 0) {
+    const raw = file.originalName.substring(0, extIdx)
+    if (raw.length <= 10) return raw
+  }
+  return '其他材料'
 }
 
-function downloadUrlFile(file) {
-  let url = `/api/files/${file.id}/download`
-  if (props.contextLabel && file.originalName) {
-    url += `?filename=${encodeURIComponent(props.contextLabel + getFileExtension(file.originalName))}`
+/** 获取扩展名 */
+function getExt(name) {
+  const i = (name || '').lastIndexOf('.')
+  return i >= 0 ? name.substring(i) : ''
+}
+
+/** 显示名称：只显示材料类型.扩展名，如"获奖证书.png" */
+function displayName(file) {
+  const material = getMaterialLabel(file)
+  const ext = getExt(file.originalName || '')
+  return material + ext
+}
+
+/** 构建下载命名参数 */
+function getNamingParams() {
+  return {
+    achievementType: props.relatedType || '',
+    projectName: props.achievementName || '',
+    userName: props.applicantName || ''
   }
-  triggerDownload(url)
+}
+
+// ========== 下载 ==========
+async function downloadFile(file) {
+  if (!file || !file.id) return
+  try {
+    const blob = await downloadSingleFile(file.id)
+    // 下载用完整规范名：竞赛_张三_全国大学生数学竞赛_获奖证书.png
+    const downloadName = generateFileName({
+      ...getNamingParams(),
+      originalName: file.originalName || ''
+    })
+    triggerBlobDownload(blob, downloadName)
+  } catch {
+    ElMessage.error('下载失败')
+  }
+}
+
+async function downloadUrlFile(file) {
+  if (!file || !file.id) return
+  try {
+    const blob = await downloadSingleFile(file.id)
+    const downloadName = generateFileName({
+      ...getNamingParams(),
+      originalName: file.originalName || ''
+    })
+    triggerBlobDownload(blob, downloadName)
+  } catch {
+    ElMessage.error('下载失败')
+  }
 }
 </script>
 
@@ -353,9 +471,16 @@ function downloadUrlFile(file) {
   border-radius: var(--card-radius);
 }
 
+.attach-selected-count {
+  font-size: 13px;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
 .attach-toolbar-actions {
   display: flex;
   gap: 8px;
+  margin-left: auto;
 }
 
 .attachment-grid {

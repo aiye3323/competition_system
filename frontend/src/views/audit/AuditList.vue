@@ -115,7 +115,14 @@
         <!-- Attachments -->
         <el-card shadow="never" class="detail-section">
           <template #header><span style="font-weight:bold;">附件材料</span></template>
-          <AttachmentDisplay :files="detail.files" :context-label="attachmentContextLabel" />
+          <AttachmentDisplay
+            :files="detail.files"
+            :context-label="attachmentContextLabel"
+            :related-type="detail.type"
+            :related-id="detail.id"
+            :achievement-name="auditAchievementName"
+            :applicant-name="detail.applicantName"
+          />
         </el-card>
 
         <!-- Audit Timeline -->
@@ -249,6 +256,16 @@ const attachmentContextLabel = computed(() => {
   else if (d.type === 'PAPER') name = d.fields?.title
   else if (d.type === 'SOFTWARE') name = d.fields?.softwareName
   return [prefix, name, d.applicantName].filter(Boolean).join('_')
+})
+
+const auditAchievementName = computed(() => {
+  const d = detail.value
+  if (!d) return ''
+  if (d.type === 'COMPETITION') return d.fields?.competitionName || ''
+  if (d.type === 'PROJECT') return d.fields?.projectName || ''
+  if (d.type === 'PAPER') return d.fields?.title || ''
+  if (d.type === 'SOFTWARE') return d.fields?.softwareName || ''
+  return ''
 })
 
 onMounted(() => {

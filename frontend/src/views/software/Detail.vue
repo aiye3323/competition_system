@@ -23,6 +23,8 @@
           :context-label="contextLabel"
           related-type="SOFTWARE"
           :related-id="data?.id"
+          :achievement-name="data?.softwareName"
+          :applicant-name="data?.applicantName"
         />
       </div>
 
@@ -64,7 +66,7 @@ const auditLogs = ref([])
 
 const contextLabel = computed(() => {
   if (!data.value) return ''
-  return ['软著', data.value.softwareName, data.value.applicantName].filter(Boolean).join('_')
+  return ['软著', data.value.applicantName, data.value.softwareName].filter(Boolean).join('_')
 })
 
 function statusType(s) {

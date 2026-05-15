@@ -30,6 +30,8 @@
           :context-label="contextLabel"
           related-type="COMPETITION"
           :related-id="detail?.id"
+          :achievement-name="detail?.competitionName"
+          :applicant-name="detail?.applicantName"
         />
       </div>
     </el-card>
@@ -78,7 +80,7 @@ const auditLogs = ref([])
 
 const contextLabel = computed(() => {
   if (!detail.value) return ''
-  return ['竞赛', detail.value.competitionName, detail.value.applicantName].filter(Boolean).join('_')
+  return ['竞赛', detail.value.applicantName, detail.value.competitionName].filter(Boolean).join('_')
 })
 
 onMounted(async () => {
