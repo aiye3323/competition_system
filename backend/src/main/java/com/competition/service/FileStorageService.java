@@ -31,10 +31,14 @@ public class FileStorageService {
 
     private final FileRepository fileRepository;
 
+    /** 基础上传目录的绝对路径（启动时初始化，避免每次拼路径） */
+    private Path baseUploadPath;
+
     @PostConstruct
     public void init() {
         try {
-            Files.createDirectories(Paths.get(uploadPath));
+            this.baseUploadPath = Paths.get(uploadPath).toAbsolutePath().normalize();
+            Files.createDirectories(baseUploadPath);
         } catch (IOException e) {
             throw new RuntimeException("无法创建上传目录: " + uploadPath, e);
         }
@@ -54,9 +58,9 @@ public class FileStorageService {
         String relativePath = dateDir + "/" + uuidName;
 
         try {
-            Path targetDir = Paths.get(uploadPath, dateDir);
+            Path targetDir = baseUploadPath.resolve(dateDir).normalize();
             Files.createDirectories(targetDir);
-            Path targetPath = Paths.get(uploadPath, relativePath);
+            Path targetPath = baseUploadPath.resolve(relativePath).normalize();
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException("文件存储失败", e);
@@ -76,7 +80,14 @@ public class FileStorageService {
     }
 
     public Resource loadFileAsResource(String storagePath) {
-        Path filePath = Paths.get(uploadPath, storagePath).normalize().toAbsolutePath();
+        Path filePath = baseUploadPath.resolve(storagePath).normalize();
+
+        // 安全检查：防止路径遍历攻击
+        if (!filePath.startsWith(baseUploadPath)) {
+            throw new RuntimeException("非法的文件路径");
+        }
+
+        // 使用 FileSystemResource 读取，避免 URI 编码问题
         Resource resource = new FileSystemResource(filePath);
         if (resource.exists() && resource.isReadable()) {
             return resource;
@@ -90,7 +101,10 @@ public class FileStorageService {
                 .orElseThrow(() -> new RuntimeException("文件不存在"));
 
         try {
-            Path filePath = Paths.get(uploadPath, fileEntity.getStoragePath()).normalize().toAbsolutePath();
+            Path filePath = baseUploadPath.resolve(fileEntity.getStoragePath()).normalize();
+            if (!filePath.startsWith(baseUploadPath)) {
+                throw new RuntimeException("非法的文件路径");
+            }
             Files.deleteIfExists(filePath);
         } catch (IOException e) {
             throw new RuntimeException("文件删除失败", e);

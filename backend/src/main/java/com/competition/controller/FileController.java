@@ -66,30 +66,45 @@ public class FileController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Resource> getFile(@PathVariable Long id) {
-        FileEntity fileEntity = fileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文件不存在"));
+    public ResponseEntity<?> getFile(@PathVariable Long id) {
+        FileEntity fileEntity = fileRepository.findById(id).orElse(null);
+        if (fileEntity == null) {
+            return ResponseEntity.status(404).body(Result.error(404, "文件记录不存在"));
+        }
 
-        Resource resource = fileStorageService.loadFileAsResource(fileEntity.getStoragePath());
+        Resource resource;
+        try {
+            resource = fileStorageService.loadFileAsResource(fileEntity.getStoragePath());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Result.error(400, e.getMessage()));
+        }
+
         String contentType = fileStorageService.getContentType(fileEntity.getStoragePath());
+        String safeName = fileEntity.getOriginalName().replaceAll("[\"\\n\\r]", "_");
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + fileEntity.getOriginalName() + "\"")
+                        "inline; filename=\"" + safeName + "\"")
                 .body(resource);
     }
 
     @GetMapping("/{id}/download")
-    public ResponseEntity<Resource> downloadFile(@PathVariable Long id,
-                                                  @RequestParam(required = false) String filename) {
-        FileEntity fileEntity = fileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文件不存在"));
+    public ResponseEntity<?> downloadFile(@PathVariable Long id,
+                                          @RequestParam(required = false) String filename) {
+        FileEntity fileEntity = fileRepository.findById(id).orElse(null);
+        if (fileEntity == null) {
+            return ResponseEntity.status(404).body(Result.error(404, "文件记录不存在"));
+        }
 
-        Resource resource = fileStorageService.loadFileAsResource(fileEntity.getStoragePath());
+        Resource resource;
+        try {
+            resource = fileStorageService.loadFileAsResource(fileEntity.getStoragePath());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Result.error(400, e.getMessage()));
+        }
+
         String contentType = fileStorageService.getContentType(fileEntity.getStoragePath());
-
-        // 支持自定义下载文件名（用于展示类别、项目、作者等信息）
         String displayName = filename != null ? filename : fileEntity.getOriginalName();
         displayName = displayName.replaceAll("[\"\\n\\r]", "_");
 
