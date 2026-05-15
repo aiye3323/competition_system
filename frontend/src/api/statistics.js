@@ -14,3 +14,11 @@ export function exportAchievements(params) {
     responseType: 'blob'
   })
 }
+
+/** 一键导出全部成果汇总 Excel */
+export function exportAllAchievementsToExcel() {
+  return request.get('/statistics/export-all', {
+    responseType: 'blob',
+    timeout: 120000
+  })
+}

@@ -1,12 +1,20 @@
 package com.competition.service;
 
+import com.competition.dto.FileListDTO;
 import com.competition.entity.FileEntity;
+import com.competition.entity.User;
 import com.competition.repository.FileRepository;
+import com.competition.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,10 +29,8 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -36,6 +42,7 @@ public class FileStorageService {
     private String uploadPath;
 
     private final FileRepository fileRepository;
+    private final UserRepository userRepository;
 
     /** 基础上传目录的绝对路径（启动时初始化，避免每次拼路径） */
     private Path baseUploadPath;
@@ -107,8 +114,56 @@ public class FileStorageService {
         throw new RuntimeException("文件不存在或不可读: " + filePath);
     }
 
+    /**
+     * 删除文件（带权限校验）
+     * @param fileId 文件ID
+     * @param userId 当前用户ID
+     * @param role   当前用户角色
+     * @param achievementStatus 关联成果的状态（可为null）
+     */
+    @Transactional
+    public void deleteFile(Long fileId, Long userId, String role, String achievementStatus) {
+        FileEntity fileEntity = fileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("文件不存在"));
+
+        // 权限校验
+        if (!canDelete(fileEntity, userId, role, achievementStatus)) {
+            throw new RuntimeException("无权删除该文件");
+        }
+
+        // 软删除
+        fileEntity.setIsDeleted(1);
+        fileRepository.save(fileEntity);
+    }
+
+    /**
+     * 判断当前用户是否有权删除文件
+     */
+    private boolean canDelete(FileEntity file, Long userId, String role, String achievementStatus) {
+        // 管理员可删除任何文件
+        if ("ROLE_ADMIN".equals(role) || "ADMIN".equals(role)) {
+            return true;
+        }
+        // 秘书和领导不可删除
+        if ("ROLE_SECRETARY".equals(role) || "SECRETARY".equals(role)
+                || "ROLE_LEADER".equals(role) || "LEADER".equals(role)) {
+            return false;
+        }
+        // 学生/教师只能删除自己上传的且成果状态为 DRAFT/REJECTED 的文件
+        if (file.getUploaderId() == null || !file.getUploaderId().equals(userId)) {
+            return false;
+        }
+        // 未关联成果的文件允许删除（草稿阶段的临时文件）
+        if (achievementStatus == null) {
+            return true;
+        }
+        // 关联了成果的文件，只有草稿或已退回状态才能删除
+        return "DRAFT".equals(achievementStatus) || "REJECTED".equals(achievementStatus);
+    }
+
     @Transactional
     public void deleteFile(Long fileId) {
+        // 旧接口保留兼容：不做权限检查直接物理删除
         FileEntity fileEntity = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("文件不存在"));
 
@@ -123,6 +178,23 @@ public class FileStorageService {
         }
 
         fileRepository.delete(fileEntity);
+    }
+
+    /**
+     * 批量删除文件（带权限校验）
+     */
+    @Transactional
+    public int deleteFiles(List<Long> fileIds, Long userId, String role) {
+        int deleted = 0;
+        for (Long id : fileIds) {
+            try {
+                deleteFile(id, userId, role, null);
+                deleted++;
+            } catch (RuntimeException ignored) {
+                // 跳过无权限的
+            }
+        }
+        return deleted;
     }
 
     @Transactional
@@ -160,12 +232,135 @@ public class FileStorageService {
     }
 
     /**
+     * 分页查询文件列表，支持多条件筛选和角色过滤
+     */
+    public Page<FileListDTO> listFiles(String fileType, String materialType, String relatedType,
+                                        String keyword, LocalDate startDate, LocalDate endDate,
+                                        int page, int size, Long userId, String role) {
+        Specification<FileEntity> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("isDeleted"), 0));
+
+            if (fileType != null && !fileType.isEmpty())
+                predicates.add(cb.equal(root.get("fileType"), fileType));
+            if (materialType != null && !materialType.isEmpty())
+                predicates.add(cb.equal(root.get("materialType"), materialType));
+            if (relatedType != null && !relatedType.isEmpty())
+                predicates.add(cb.equal(root.get("relatedType"), relatedType));
+            if (keyword != null && !keyword.isEmpty())
+                predicates.add(cb.like(root.get("originalName"), "%" + keyword + "%"));
+            if (startDate != null)
+                predicates.add(cb.greaterThanOrEqualTo(root.get("uploadTime"), startDate.atStartOfDay()));
+            if (endDate != null)
+                predicates.add(cb.lessThanOrEqualTo(root.get("uploadTime"), endDate.plusDays(1).atStartOfDay()));
+
+            if ("STUDENT".equals(role) || "TEACHER".equals(role))
+                predicates.add(cb.equal(root.get("uploaderId"), userId));
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        PageRequest pageRequest = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "uploadTime"));
+        Page<FileEntity> entityPage = fileRepository.findAll(spec, pageRequest);
+
+        Set<Long> uploaderIds = entityPage.getContent().stream()
+                .map(FileEntity::getUploaderId)
+                .collect(Collectors.toSet());
+        Map<Long, String> nameMap = new HashMap<>();
+        if (!uploaderIds.isEmpty()) {
+            List<User> users = userRepository.findAllById(uploaderIds);
+            for (User u : users) {
+                nameMap.put(u.getId(), u.getRealName() != null ? u.getRealName() : u.getUsername());
+            }
+        }
+
+        return entityPage.map(entity -> {
+            FileListDTO dto = new FileListDTO();
+            dto.setId(entity.getId());
+            dto.setOriginalName(entity.getOriginalName());
+            dto.setStoragePath(entity.getStoragePath());
+            dto.setFileSize(entity.getFileSize());
+            dto.setFileType(entity.getFileType());
+            dto.setMaterialType(entity.getMaterialType());
+            dto.setRelatedType(entity.getRelatedType());
+            dto.setRelatedId(entity.getRelatedId());
+            dto.setUploaderId(entity.getUploaderId());
+            dto.setUploaderName(nameMap.getOrDefault(entity.getUploaderId(), "未知"));
+            dto.setUploadTime(entity.getUploadTime());
+            return dto;
+        });
+    }
+
+    /**
+     * 获取文件统计：总文件数、总存储量、近7日上传数、按类型分组计数
+     */
+    public Map<String, Object> getFileStats(Long userId, String role) {
+        Specification<FileEntity> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("isDeleted"), 0));
+            if ("STUDENT".equals(role) || "TEACHER".equals(role))
+                predicates.add(cb.equal(root.get("uploaderId"), userId));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<FileEntity> allFiles = fileRepository.findAll(spec);
+
+        long totalFiles = allFiles.size();
+        long totalStorage = allFiles.stream().mapToLong(FileEntity::getFileSize).sum();
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+        long recentUploads = allFiles.stream()
+                .filter(f -> f.getUploadTime() != null && f.getUploadTime().isAfter(sevenDaysAgo))
+                .count();
+
+        Map<String, Long> countByType = allFiles.stream()
+                .collect(Collectors.groupingBy(
+                        f -> f.getFileType() != null ? f.getFileType() : "OTHER",
+                        Collectors.counting()));
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalFiles", totalFiles);
+        stats.put("totalStorage", totalStorage);
+        stats.put("recentUploads", recentUploads);
+        stats.put("countByType", countByType);
+        return stats;
+    }
+
+    /**
      * 获取原始文件名（不含路径）
      */
     public String getOriginalName(String storagePath) {
         String name = storagePath.replace('\\', '/');
         int idx = name.lastIndexOf('/');
         return idx >= 0 ? name.substring(idx + 1) : name;
+    }
+
+    /**
+     * 查询当前用户的文件列表，支持按类型筛选
+     */
+    public List<FileEntity> listMyFiles(Long userId, String fileType, String relatedType, String sortBy) {
+        List<FileEntity> files;
+        if (fileType != null && !fileType.isEmpty() && relatedType != null && !relatedType.isEmpty()) {
+            files = fileRepository.findActiveByUploaderId(userId);
+            files = files.stream()
+                    .filter(f -> fileType.equals(f.getFileType()) && relatedType.equals(f.getRelatedType()))
+                    .collect(Collectors.toList());
+        } else if (fileType != null && !fileType.isEmpty()) {
+            files = fileRepository.findActiveByUploaderIdAndFileType(userId, fileType);
+        } else if (relatedType != null && !relatedType.isEmpty()) {
+            files = fileRepository.findActiveByUploaderIdAndRelatedType(userId, relatedType);
+        } else {
+            files = fileRepository.findActiveByUploaderId(userId);
+        }
+
+        // 排序
+        if ("name".equals(sortBy)) {
+            files.sort(Comparator.comparing(FileEntity::getOriginalName, String.CASE_INSENSITIVE_ORDER));
+        } else if ("size".equals(sortBy)) {
+            files.sort(Comparator.comparingLong(FileEntity::getFileSize));
+        } else {
+            files.sort(Comparator.comparing(FileEntity::getUploadTime).reversed());
+        }
+        return files;
     }
 
     /**

@@ -6,13 +6,5 @@
 </script>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-html, body, #app {
-  width: 100%;
-  height: 100%;
-}
+/* 全局 reset 已由 global.css 统一管理，此处保留仅作 App 级备用 */
 </style>

@@ -36,7 +36,7 @@
     <el-card v-if="auditLogs.length > 0" class="card-wrapper">
       <template #header><span>审核记录</span></template>
       <el-timeline>
-        <el-timeline-item v-for="log in auditLogs" :key="log.id" :timestamp="log.auditTime"
+        <el-timeline-item v-for="log in auditLogs" :key="log.id" :timestamp="formatTime(log.auditTime)"
           :type="log.result === 'APPROVED' ? 'success' : 'danger'" placement="top">
           <div>
             <el-tag :type="log.result === 'APPROVED' ? 'success' : 'danger'" size="small" effect="plain">
@@ -52,7 +52,7 @@
       </el-timeline>
     </el-card>
 
-    <div v-if="detail && detail.status === 'REJECTED'" style="margin-top:20px;">
+    <div v-if="detail && detail.status === 'REJECTED'" style="margin-top:24px;">
       <el-button type="primary" @click="$router.push(`/paper/edit/${id}`)">修改后重新提交</el-button>
     </div>
 
@@ -65,6 +65,7 @@ import { useRoute } from 'vue-router'
 import { getPaperDetail } from '@/api/paper'
 import { getPaperAuditLogs } from '@/api/audit'
 import AttachmentDisplay from '@/components/AttachmentDisplay.vue'
+import { statusType, statusLabel } from '@/utils/statusMap'
 
 const route = useRoute()
 const id = route.params.id
@@ -83,12 +84,8 @@ onMounted(async () => {
   if (logsRes.code === 200) auditLogs.value = logsRes.data
 })
 
-function statusType(s) {
-  const m = { PENDING: 'warning', PENDING_LEADER: 'warning', APPROVED: 'success', REJECTED: 'danger', ARCHIVED: '' }
-  return m[s] || 'info'
-}
-function statusLabel(s) {
-  const m = { PENDING: '待审核', PENDING_LEADER: '领导审核中', APPROVED: '已通过', REJECTED: '已驳回', ARCHIVED: '已归档' }
-  return m[s] || s
+function formatTime(time) {
+  if (!time) return ''
+  return time.substring(0, 10) + '  ' + time.substring(11, 19)
 }
 </script>

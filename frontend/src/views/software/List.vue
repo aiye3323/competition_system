@@ -79,6 +79,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getSoftwareList, deleteSoftware, exportSoftware } from '@/api/software'
 import { secretaryApproveSoftware, secretaryRejectSoftware, leaderApproveSoftware, leaderRejectSoftware } from '@/api/audit'
 import AuditDialog from '@/components/AuditDialog.vue'
+import { statusType, statusLabel } from '@/utils/statusMap'
 
 const router = useRouter()
 const list = ref([])
@@ -163,7 +164,6 @@ async function handleExport() {
   try {
     const params = {}
     if (filters.registrationNumber) params.registrationNumber = filters.registrationNumber
-    if (filters.status) params.status = filters.status
     const res = await exportSoftware(params)
     const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
@@ -174,13 +174,6 @@ async function handleExport() {
     URL.revokeObjectURL(url)
   } catch { ElMessage.error('导出失败') }
   finally { exportLoading.value = false }
-}
-
-function statusType(s) {
-  return { PENDING: 'warning', PENDING_LEADER: 'warning', ARCHIVED: 'success', REJECTED: 'danger' }[s] || 'info'
-}
-function statusLabel(s) {
-  return { PENDING: '待审核', PENDING_LEADER: '领导审核中', ARCHIVED: '已归档', REJECTED: '已驳回' }[s] || s
 }
 
 onMounted(() => fetchData())

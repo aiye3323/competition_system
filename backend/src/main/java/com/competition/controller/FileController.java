@@ -1,10 +1,16 @@
 package com.competition.controller;
 
+import com.competition.dto.FileListDTO;
 import com.competition.dto.Result;
 import com.competition.entity.FileEntity;
+import com.competition.entity.User;
 import com.competition.repository.FileRepository;
+import com.competition.repository.UserRepository;
+import com.competition.service.FileExportService;
 import com.competition.service.FileStorageService;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,10 +20,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/files")
@@ -26,11 +31,16 @@ public class FileController {
     // 1. 保留 final 声明
     private final FileStorageService fileStorageService;
     private final FileRepository fileRepository;
+    private final UserRepository userRepository;
+    private final FileExportService fileExportService;
 
-    // 2. 手动写构造器 → 彻底解决“未初始化”报错
-    public FileController(FileStorageService fileStorageService, FileRepository fileRepository) {
+    // 2. 手动写构造器 → 彻底解决”未初始化”报错
+    public FileController(FileStorageService fileStorageService, FileRepository fileRepository,
+                          UserRepository userRepository, FileExportService fileExportService) {
         this.fileStorageService = fileStorageService;
         this.fileRepository = fileRepository;
+        this.userRepository = userRepository;
+        this.fileExportService = fileExportService;
     }
 
     /**
@@ -175,9 +185,159 @@ public class FileController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> deleteFile(@PathVariable Long id) {
-        fileStorageService.deleteFile(id);
+    public Result<Void> deleteFile(@PathVariable Long id,
+                                   @RequestParam(required = false) String achievementStatus,
+                                   Authentication authentication) {
+        if (authentication == null)
+            return Result.error(401, "请先登录");
+
+        Long userId = (Long) authentication.getPrincipal();
+        String role = getUserRole(authentication);
+
+        // 检查是否为删除者上传的文件
+        FileEntity fileEntity = fileRepository.findById(id).orElse(null);
+        if (fileEntity == null)
+            return Result.error(404, "文件不存在");
+
+        // 管理员可删除任何文件（二次确认由前端处理）
+        if (role.contains("ADMIN")) {
+            fileStorageService.deleteFile(id);
+            return Result.success(null);
+        }
+
+        // 秘书/领导不可删除
+        if (role.contains("SECRETARY") || role.contains("LEADER")) {
+            return Result.error(403, "审核人员无权删除文件");
+        }
+
+        // 学生/教师：只能删除自己的文件且成果状态为 DRAFT 或 REJECTED 或未关联
+        if (!fileEntity.getUploaderId().equals(userId)) {
+            return Result.error(403, "无权删除他人文件");
+        }
+
+        fileStorageService.deleteFile(id, userId, role, achievementStatus);
         return Result.success(null);
+    }
+
+    /**
+     * 批量删除文件
+     */
+    @DeleteMapping("/batch")
+    public Result<Map<String, Object>> batchDeleteFiles(@RequestBody Map<String, Object> body,
+                                                         Authentication authentication) {
+        if (authentication == null)
+            return Result.error(401, "请先登录");
+
+        @SuppressWarnings("unchecked")
+        List<Integer> rawIds = (List<Integer>) body.get("fileIds");
+        if (rawIds == null || rawIds.isEmpty())
+            return Result.error(400, "未指定要删除的文件");
+
+        List<Long> fileIds = rawIds.stream().map(Long::valueOf).toList();
+        Long userId = (Long) authentication.getPrincipal();
+        String role = getUserRole(authentication);
+
+        int deleted = fileStorageService.deleteFiles(fileIds, userId, role);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deleted", deleted);
+        result.put("total", fileIds.size());
+        return Result.success(result);
+    }
+
+    /**
+     * 分页查询文件列表，支持多条件筛选
+     */
+    @GetMapping("/list")
+    public Result<Map<String, Object>> listFiles(
+            @RequestParam(required = false) String fileType,
+            @RequestParam(required = false) String materialType,
+            @RequestParam(required = false) String relatedType,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+
+        if (authentication == null)
+            return Result.error(401, "请先登录");
+
+        Long userId = (Long) authentication.getPrincipal();
+        String role = getUserRole(authentication);
+
+        Page<FileListDTO> dtoPage = fileStorageService.listFiles(
+                fileType, materialType, relatedType, keyword,
+                startDate, endDate, page, size, userId, role);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("content", dtoPage.getContent());
+        result.put("totalElements", dtoPage.getTotalElements());
+        result.put("totalPages", dtoPage.getTotalPages());
+        result.put("number", dtoPage.getNumber());
+        result.put("size", dtoPage.getSize());
+        return Result.success(result);
+    }
+
+    /**
+     * 当前用户个人文件列表
+     */
+    @GetMapping("/my")
+    public Result<List<FileListDTO>> getMyFiles(
+            @RequestParam(required = false) String fileType,
+            @RequestParam(required = false) String relatedType,
+            @RequestParam(required = false, defaultValue = "time") String sortBy,
+            Authentication authentication) {
+
+        if (authentication == null)
+            return Result.error(401, "请先登录");
+
+        Long userId = (Long) authentication.getPrincipal();
+
+        List<FileEntity> files = fileStorageService.listMyFiles(userId, fileType, relatedType, sortBy);
+
+        Set<Long> uploaderIds = files.stream()
+                .map(FileEntity::getUploaderId)
+                .collect(Collectors.toSet());
+        Map<Long, String> nameMap = new HashMap<>();
+        if (!uploaderIds.isEmpty()) {
+            List<User> users = userRepository.findAllById(uploaderIds);
+            for (User u : users) {
+                nameMap.put(u.getId(), u.getRealName() != null ? u.getRealName() : u.getUsername());
+            }
+        }
+
+        List<FileListDTO> dtos = files.stream().map(entity -> {
+            FileListDTO dto = new FileListDTO();
+            dto.setId(entity.getId());
+            dto.setOriginalName(entity.getOriginalName());
+            dto.setStoragePath(entity.getStoragePath());
+            dto.setFileSize(entity.getFileSize());
+            dto.setFileType(entity.getFileType());
+            dto.setMaterialType(entity.getMaterialType());
+            dto.setRelatedType(entity.getRelatedType());
+            dto.setRelatedId(entity.getRelatedId());
+            dto.setUploaderId(entity.getUploaderId());
+            dto.setUploaderName(nameMap.getOrDefault(entity.getUploaderId(), "未知"));
+            dto.setUploadTime(entity.getUploadTime());
+            return dto;
+        }).collect(Collectors.toList());
+
+        return Result.success(dtos);
+    }
+
+    /**
+     * 获取文件统计数据
+     */
+    @GetMapping("/stats")
+    public Result<Map<String, Object>> getFileStats(Authentication authentication) {
+        if (authentication == null)
+            return Result.error(401, "请先登录");
+
+        Long userId = (Long) authentication.getPrincipal();
+        String role = getUserRole(authentication);
+
+        Map<String, Object> stats = fileStorageService.getFileStats(userId, role);
+        return Result.success(stats);
     }
 
     /**
@@ -246,6 +406,33 @@ public class FileController {
             zipName = "批量成果_" + operator + "_" + date + ".zip";
             zipName = zipName.replaceAll("[\\\\/:*?\"<>|\\s]", "");
         }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\""
+                                + zipName
+                                + "\"; filename*=UTF-8''"
+                                + encodeRFC5987(zipName))
+                .body(zipBytes);
+    }
+
+    /**
+     * 一键导出所有文件（按成果分类打包 ZIP）
+     */
+    @GetMapping("/export-all")
+    public ResponseEntity<?> exportAllFiles(Authentication authentication) {
+        if (authentication == null)
+            return ResponseEntity.status(401).body(Result.error(401, "请先登录"));
+
+        Long userId = (Long) authentication.getPrincipal();
+        String role = getUserRole(authentication);
+
+        byte[] zipBytes = fileExportService.exportAllFiles(userId, role);
+
+        String zipName = "科研成果文件导出_"
+                + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"))
+                + ".zip";
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))

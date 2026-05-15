@@ -42,7 +42,7 @@
         <el-timeline-item
           v-for="log in auditLogs"
           :key="log.id"
-          :timestamp="log.auditTime"
+          :timestamp="formatTime(log.auditTime)"
           :type="log.result === 'APPROVED' ? 'success' : 'danger'"
           placement="top"
         >
@@ -60,7 +60,7 @@
       </el-timeline>
     </el-card>
 
-    <div v-if="detail && detail.status === 'REJECTED'" style="margin-top:20px;">
+    <div v-if="detail && detail.status === 'REJECTED'" style="margin-top:24px;">
       <el-button type="primary" @click="$router.push(`/competition/edit/${id}`)">修改后重新提交</el-button>
     </div>
   </div>
@@ -72,6 +72,7 @@ import { useRoute } from 'vue-router'
 import { getCompetitionDetail } from '@/api/competition'
 import { getAuditLogs } from '@/api/review'
 import AttachmentDisplay from '@/components/AttachmentDisplay.vue'
+import { statusType, statusLabel } from '@/utils/statusMap'
 
 const route = useRoute()
 const id = route.params.id
@@ -94,13 +95,8 @@ onMounted(async () => {
   }
 })
 
-function statusType(status) {
-  const map = { DRAFT: 'info', PENDING: 'warning', PENDING_LEADER: "warning", FIRST_REVIEW: "", FINAL_REVIEW: 'primary', APPROVED: 'success', REJECTED: 'danger', ARCHIVED: '' }
-  return map[status] || 'info'
-}
-
-function statusLabel(status) {
-  const map = { DRAFT: '草稿', PENDING: '待审核', PENDING_LEADER: "领导审核中", FIRST_REVIEW: "一审中", FINAL_REVIEW: '终审中', APPROVED: '已通过', REJECTED: '已驳回', ARCHIVED: '已归档' }
-  return map[status] || status
+function formatTime(time) {
+  if (!time) return ''
+  return time.substring(0, 10) + '  ' + time.substring(11, 19)
 }
 </script>

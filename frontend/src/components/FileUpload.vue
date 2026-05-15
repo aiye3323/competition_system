@@ -158,6 +158,11 @@ function handleRemove(file) {
 <style scoped>
 .file-upload-wrapper { width: 100%; }
 
+/* 隐藏上传文件悬停时的放大镜预览图标 */
+:deep(.el-upload-list__item-preview) {
+  display: none !important;
+}
+
 .upload-hint-text {
   display: block;
   width: 100%;

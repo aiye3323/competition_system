@@ -84,6 +84,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProjectList, deleteProject, exportProject } from '@/api/project'
 import { secretaryApproveProject, secretaryRejectProject, leaderApproveProject, leaderRejectProject } from '@/api/audit'
 import AuditDialog from '@/components/AuditDialog.vue'
+import { statusType, statusLabel } from '@/utils/statusMap'
 
 const list = ref([])
 const total = ref(0)
@@ -147,16 +148,6 @@ function resetFilters() {
   fetchData()
 }
 
-function statusType(status) {
-  const map = { DRAFT: 'info', PENDING: 'warning', PENDING_LEADER: "warning", APPROVED: 'success', REJECTED: 'danger', ARCHIVED: '' }
-  return map[status] || 'info'
-}
-
-function statusLabel(status) {
-  const map = { DRAFT: '草稿', PENDING: '待审核', PENDING_LEADER: "领导审核中", APPROVED: '已通过', REJECTED: '已驳回', ARCHIVED: '已归档' }
-  return map[status] || status
-}
-
 function handleAudit(row) {
   auditRow.value = row
   auditVisible.value = true
@@ -167,7 +158,6 @@ async function handleExport() {
   try {
     const params = {}
     if (filters.projectLevel) params.projectLevel = filters.projectLevel
-    if (filters.status) params.status = filters.status
     const res = await exportProject(params)
     const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)

@@ -1,8 +1,8 @@
 <template>
   <div>
-    <!-- ========== 附件缩略图网格 -- File list mode ========== -->
+    <!-- ========== 附件缩略图网格 -- File list mode (分组展示) ========== -->
     <template v-if="files && files.length > 0">
-      <!-- 操作栏 -->
+      <!-- 全局操作栏 -->
       <div v-if="showBatchActions && files.length > 0" class="attach-toolbar">
         <el-checkbox
           :model-value="allSelected"
@@ -24,53 +24,54 @@
         </div>
       </div>
 
-      <div class="attachment-grid">
-        <div v-for="(file, idx) in files" :key="idx" class="attachment-item">
-          <!-- 复选框 -->
-          <el-checkbox
-            v-if="showBatchActions"
-            :model-value="selectedIds.includes(file.id)"
-            class="attach-check"
-            @change="(val) => toggleFile(file.id, val)"
-          />
-
-          <el-image
-            v-if="file.fileType === 'IMAGE'"
-            :src="getFileUrl(file.id)"
-            fit="cover"
-            class="attachment-thumb"
-            :preview-src-list="imagePreviewList"
-            hide-on-click-modal
-            preview-teleported
-          />
-          <div v-else class="attachment-icon" :class="iconClass(file)">
-            <el-icon :size="36"><component :is="fileIcon(file)" /></el-icon>
-          </div>
-          <div class="attachment-info">
-            <span
-              class="attachment-name"
-              :title="'原始文件名：' + (file.originalName || '未知')"
-            >
-              {{ displayName(file) }}
-            </span>
-            <div class="attachment-actions">
-              <el-button
-                v-if="canPreview(file)"
-                type="primary" link size="small"
-                @click="openPreview('files', idx)"
-              >预览</el-button>
-              <el-button type="primary" link size="small" @click="downloadFile(file)">
-                <el-icon><Download /></el-icon> 下载
-              </el-button>
+      <!-- 按材料类型分组 -->
+      <div v-for="(group, gIdx) in fileGroups" :key="'fg-' + gIdx" class="attach-group">
+        <div class="attach-group-header">
+          <span class="attach-group-title">{{ group.label }}</span>
+          <span class="attach-group-count">（{{ group.files.length }}个文件）</span>
+        </div>
+        <div class="attachment-grid">
+          <div v-for="file in group.files" :key="file.id" class="attachment-item">
+            <el-checkbox
+              v-if="showBatchActions"
+              :model-value="selectedIds.includes(file.id)"
+              class="attach-check"
+              @change="(val) => toggleFile(file.id, val)"
+            />
+            <el-image
+              v-if="file.fileType === 'IMAGE'"
+              :src="getFileUrl(file.id)"
+              fit="cover"
+              class="attachment-thumb"
+              :preview-src-list="imagePreviewList"
+              hide-on-click-modal
+              preview-teleported
+            />
+            <div v-else class="attachment-icon" :class="iconClass(file)">
+              <el-icon :size="36"><component :is="fileIcon(file)" /></el-icon>
+            </div>
+            <div class="attachment-info">
+              <span class="attachment-name" :title="'原始文件名：' + (file.originalName || '未知')">
+                {{ displayName(file) }}
+              </span>
+              <div class="attachment-actions">
+                <el-button
+                  v-if="canPreview(file)"
+                  type="primary" link size="small"
+                  @click="openFilePreview(file)"
+                >预览</el-button>
+                <el-button type="primary" link size="small" @click="downloadFile(file)">
+                  <el-icon><Download /></el-icon> 下载
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </template>
 
-    <!-- ========== 附件缩略图网格 -- URL list mode ========== -->
+    <!-- ========== 附件缩略图网格 -- URL list mode (分组展示) ========== -->
     <template v-else-if="fileUrls && fileUrls.length > 0">
-      <!-- 操作栏 -->
       <div v-if="showBatchActions && fileUrls.length > 0" class="attach-toolbar">
         <el-checkbox
           :model-value="allSelected"
@@ -92,43 +93,45 @@
         </div>
       </div>
 
-      <div class="attachment-grid">
-        <div v-for="(file, idx) in fileUrls" :key="idx" class="attachment-item">
-          <el-checkbox
-            v-if="showBatchActions"
-            :model-value="selectedUrlIdxs.includes(idx)"
-            class="attach-check"
-            @change="(val) => toggleUrlIdx(idx, val)"
-          />
-
-          <el-image
-            v-if="isImageUrl(file.url)"
-            :src="fullUrl(file.url)"
-            fit="cover"
-            class="attachment-thumb"
-            :preview-src-list="imagePreviewUrls"
-            hide-on-click-modal
-            preview-teleported
-          />
-          <div v-else class="attachment-icon" :class="urlIconClass(file)">
-            <el-icon :size="36"><component :is="urlFileIcon(file)" /></el-icon>
-          </div>
-          <div class="attachment-info">
-            <span
-              class="attachment-name"
-              :title="'原始文件名：' + (file.originalName || '未知')"
-            >
-              {{ displayName(file) }}
-            </span>
-            <div class="attachment-actions">
-              <el-button
-                v-if="canPreviewUrl(file)"
-                type="primary" link size="small"
-                @click="openPreview('fileUrls', idx)"
-              >预览</el-button>
-              <el-button type="primary" link size="small" @click="downloadUrlFile(file)">
-                <el-icon><Download /></el-icon> 下载
-              </el-button>
+      <div v-for="(group, gIdx) in urlFileGroups" :key="'ug-' + gIdx" class="attach-group">
+        <div class="attach-group-header">
+          <span class="attach-group-title">{{ group.label }}</span>
+          <span class="attach-group-count">（{{ group.files.length }}个文件）</span>
+        </div>
+        <div class="attachment-grid">
+          <div v-for="file in group.files" :key="file.id || file.url" class="attachment-item">
+            <el-checkbox
+              v-if="showBatchActions"
+              :model-value="selectedUrlIdxs.includes(file._idx)"
+              class="attach-check"
+              @change="(val) => toggleUrlIdx(file._idx, val)"
+            />
+            <el-image
+              v-if="isImageUrl(file.url)"
+              :src="fullUrl(file.url)"
+              fit="cover"
+              class="attachment-thumb"
+              :preview-src-list="imagePreviewUrls"
+              hide-on-click-modal
+              preview-teleported
+            />
+            <div v-else class="attachment-icon" :class="urlIconClass(file)">
+              <el-icon :size="36"><component :is="urlFileIcon(file)" /></el-icon>
+            </div>
+            <div class="attachment-info">
+              <span class="attachment-name" :title="'原始文件名：' + (file.originalName || '未知')">
+                {{ displayName(file) }}
+              </span>
+              <div class="attachment-actions">
+                <el-button
+                  v-if="canPreviewUrl(file)"
+                  type="primary" link size="small"
+                  @click="openUrlPreview(file._idx)"
+                >预览</el-button>
+                <el-button type="primary" link size="small" @click="downloadUrlFile(file)">
+                  <el-icon><Download /></el-icon> 下载
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
@@ -175,31 +178,62 @@ const props = defineProps({
   materialMap: { type: Object, default: () => ({}) }
 })
 
+// ========== 分组展示 ==========
+/** files 模式下的分组 */
+const fileGroups = computed(() => {
+  return groupByMaterial(props.files || [])
+})
+
+/** fileUrls 模式下的分组（附加 _idx 追踪原始索引） */
+const urlFileGroups = computed(() => {
+  const indexed = (props.fileUrls || []).map((f, i) => ({ ...f, _idx: i }))
+  return groupByMaterial(indexed)
+})
+
+function groupByMaterial(list) {
+  const map = new Map()
+  for (const item of list) {
+    const label = getMaterialLabel(item)
+    if (!map.has(label)) map.set(label, [])
+    map.get(label).push(item)
+  }
+  const result = []
+  for (const [label, files] of map) {
+    result.push({ label, files })
+  }
+  return result
+}
+
 // ========== 全屏预览 ==========
 const previewVisible = ref(false)
 const previewFiles = ref([])
 const previewIndex = ref(0)
 
-function openPreview(mode, idx) {
-  const source = mode === 'files' ? props.files : props.fileUrls
-  previewFiles.value = (source || []).map(f => {
-    if (mode === 'files') {
-      return {
-        id: f.id,
-        url: getFileUrl(f.id),
-        originalName: f.originalName,
-        fileType: f.fileType
-      }
-    }
-    return {
-      id: f.id,
-      url: f.id ? getFileUrl(f.id) : fullUrl(f.url),
-      originalName: f.originalName,
-      fileType: f.fileType || detectFileTypeFromName(f.originalName || f.url || '')
-    }
-  })
+function openFilePreview(file) {
+  previewFiles.value = [{
+    id: file.id,
+    url: getFileUrl(file.id),
+    originalName: file.originalName,
+    fileType: file.fileType
+  }]
+  previewIndex.value = 0
+  previewVisible.value = true
+}
+
+function openUrlPreview(idx) {
+  const source = props.fileUrls || []
+  previewFiles.value = source.map(f => ({
+    id: f.id,
+    url: f.id ? getFileUrl(f.id) : fullUrl(f.url),
+    originalName: f.originalName,
+    fileType: f.fileType || detectFileTypeFromName(f.originalName || f.url || '')
+  }))
   previewIndex.value = Math.max(0, Math.min(idx, previewFiles.value.length - 1))
   previewVisible.value = true
+}
+
+function openPreview(mode, idx) {
+  openFilePreview((props.files || [])[idx] || {})
 }
 
 // ========== 批量选择 ==========
@@ -488,6 +522,30 @@ async function downloadUrlFile(file) {
   flex-wrap: wrap;
   gap: 16px;
   margin-top: 12px;
+}
+
+.attach-group {
+  margin-bottom: var(--space-lg);
+}
+
+.attach-group-header {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--primary-color);
+}
+
+.attach-group-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.attach-group-count {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-left: 4px;
 }
 
 .attachment-item {

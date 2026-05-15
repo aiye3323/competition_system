@@ -81,6 +81,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCompetitionList, deleteCompetition, exportCompetition } from '@/api/competition'
+import { statusType, statusLabel } from '@/utils/statusMap'
 
 const list = ref([])
 const total = ref(0)
@@ -123,23 +124,12 @@ function resetFilters() {
   fetchData()
 }
 
-function statusType(status) {
-  const map = { DRAFT: 'info', PENDING: 'warning', PENDING_LEADER: 'warning', FIRST_REVIEW: '', FINAL_REVIEW: 'primary', APPROVED: 'success', REJECTED: 'danger', ARCHIVED: '' }
-  return map[status] || 'info'
-}
-
-function statusLabel(status) {
-  const map = { DRAFT: '草稿', PENDING: '待审核', PENDING_LEADER: '领导审核中', FIRST_REVIEW: '一审中', FINAL_REVIEW: '终审中', APPROVED: '已通过', REJECTED: '已驳回', ARCHIVED: '已归档' }
-  return map[status] || status
-}
-
 async function handleExport() {
   exportLoading.value = true
   try {
     const params = {}
     if (filters.category) params.category = filters.category
     if (filters.awardLevel) params.awardLevel = filters.awardLevel
-    if (filters.status) params.status = filters.status
     const res = await exportCompetition(params)
     const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
@@ -164,9 +154,3 @@ async function handleDelete(id) {
 }
 </script>
 
-<style scoped>
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-</style>

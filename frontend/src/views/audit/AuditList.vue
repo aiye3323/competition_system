@@ -37,7 +37,7 @@
     <el-table :data="list" stripe v-loading="loading">
       <el-table-column label="成果类型" width="100">
         <template #default="{ row }">
-          <el-tag :type="typeTag(row.type)" size="small">{{ typeLabel(row.type) }}</el-tag>
+          <el-tag effect="dark" :color="typeColor(row.type)" size="small">{{ typeLabel(row.type) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="title" label="名称/标题" min-width="200" show-overflow-tooltip />
@@ -47,7 +47,7 @@
       </el-table-column>
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
-          <el-tag :type="statusTag(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+          <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="80" fixed="right">
@@ -74,10 +74,10 @@
       <template v-if="detail">
         <!-- Achievement Info -->
         <el-card shadow="never" class="detail-section">
-          <template #header><span style="font-weight:bold;">成果信息</span></template>
+          <template #header><span class="font-semibold">成果信息</span></template>
           <el-descriptions :column="2" border size="small">
             <el-descriptions-item label="类型" :span="2">
-              <el-tag :type="typeTag(detail.type)" size="small">{{ typeLabel(detail.type) }}</el-tag>
+              <el-tag effect="dark" :color="typeColor(detail.type)" size="small">{{ typeLabel(detail.type) }}</el-tag>
             </el-descriptions-item>
             <template v-if="detail.type === 'COMPETITION'">
               <el-descriptions-item label="竞赛名称" :span="2">{{ detail.fields?.competitionName }}</el-descriptions-item>
@@ -114,7 +114,7 @@
 
         <!-- Attachments -->
         <el-card shadow="never" class="detail-section">
-          <template #header><span style="font-weight:bold;">附件材料</span></template>
+          <template #header><span class="font-semibold">附件材料</span></template>
           <AttachmentDisplay
             :files="detail.files"
             :context-label="attachmentContextLabel"
@@ -127,12 +127,12 @@
 
         <!-- Audit Timeline -->
         <el-card v-if="detail.auditLogs && detail.auditLogs.length > 0" shadow="never" class="detail-section">
-          <template #header><span style="font-weight:bold;">审核记录</span></template>
+          <template #header><span class="font-semibold">审核记录</span></template>
           <el-timeline>
             <el-timeline-item
               v-for="log in detail.auditLogs"
               :key="log.id"
-              :timestamp="log.auditTime"
+              :timestamp="formatTime(log.auditTime)"
               :type="log.result === 'APPROVED' ? 'success' : 'danger'"
               placement="top"
             >
@@ -140,19 +140,19 @@
                 <el-tag :type="log.result === 'APPROVED' ? 'success' : 'danger'" size="small" effect="plain">
                   {{ log.result === 'APPROVED' ? '通过' : '驳回' }}
                 </el-tag>
-                <strong style="margin-left:6px;">{{ log.auditorName }}</strong>
+                <strong style="margin-left:8px;">{{ log.auditorName }}</strong>
                 <span class="text-secondary" style="margin-left:8px;">
                   ({{ log.auditorRole === 'SECRETARY' ? '科研秘书' : '学院领导' }})
                 </span>
               </div>
-              <p v-if="log.opinion" class="text-regular" style="margin:6px 0 0;">意见：{{ log.opinion }}</p>
+              <p v-if="log.opinion" class="text-regular" style="margin:8px 0 0;">意见：{{ log.opinion }}</p>
             </el-timeline-item>
           </el-timeline>
         </el-card>
 
         <!-- Audit Action -->
         <el-card shadow="never" class="detail-section">
-          <template #header><span style="font-weight:bold;">审核操作</span></template>
+          <template #header><span class="font-semibold">审核操作</span></template>
           <el-form ref="formRef" :model="auditForm" :rules="auditRules" label-width="100px">
             <el-form-item v-if="userRole === 'LEADER' && hasSecretaryOpinion" label="秘书意见">
               <div class="text-regular" style="padding:8px 12px; background:var(--hover-bg); border-radius:8px;">
@@ -183,6 +183,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import AttachmentDisplay from '@/components/AttachmentDisplay.vue'
+import { statusType, statusLabel, typeTag, typeLabel, typeColor } from '@/utils/statusMap'
 import {
   getUnifiedPendingList, getAuditDetail,
   secretaryApproveItem, secretaryRejectItem,
@@ -357,25 +358,9 @@ async function doAudit(action) {
   }
 }
 
-function typeTag(type) {
-  return { COMPETITION: '', PROJECT: 'success', PAPER: 'warning', SOFTWARE: 'info' }[type] || ''
-}
-
-function typeLabel(type) {
-  return { COMPETITION: '竞赛', PROJECT: '项目', PAPER: '论文', SOFTWARE: '软著' }[type] || type
-}
-
-function statusTag(status) {
-  return { PENDING: 'warning', PENDING_LEADER: 'primary', ARCHIVED: 'success', REJECTED: 'danger' }[status] || 'info'
-}
-
-function statusLabel(status) {
-  return { PENDING: '待审核', PENDING_LEADER: '待领导审核', ARCHIVED: '已归档', REJECTED: '已退回' }[status] || status
-}
-
 function formatTime(time) {
   if (!time) return ''
-  return time.substring(0, 19).replace('T', ' ')
+  return time.substring(0, 10) + '  ' + time.substring(11, 19)
 }
 </script>
 

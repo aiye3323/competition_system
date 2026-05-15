@@ -8,7 +8,7 @@
     </div>
 
     <!-- 筛选区 -->
-    <el-card style="margin-bottom:20px;">
+    <el-card class="card-wrapper">
       <el-form :inline="true" :model="filters">
         <el-form-item label="成果类型">
           <el-select v-model="filters.type" placeholder="全部类型" clearable style="width:140px;" @change="fetchData">
@@ -44,7 +44,7 @@
       <el-table :data="list" v-loading="loading" stripe style="width:100%">
         <el-table-column label="成果类型" width="110">
           <template #default="{ row }">
-            <el-tag :type="typeTag(row.type)">{{ row.typeLabel }}</el-tag>
+            <el-tag :color="typeColor(row.type)" effect="dark">{{ row.typeLabel }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="title" label="名称" show-overflow-tooltip>
@@ -78,6 +78,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Download } from '@element-plus/icons-vue'
 import { getPublicAchievementList, exportAchievements } from '@/api/statistics'
+import { typeTag, typeColor } from '@/utils/statusMap'
 
 const router = useRouter()
 
@@ -154,10 +155,6 @@ async function handleExport() {
   } catch (e) {
     // error handled by interceptor
   }
-}
-
-function typeTag(type) {
-  return { COMPETITION: '', PROJECT: 'success', PAPER: 'warning', SOFTWARE: 'info' }[type] || 'info'
 }
 
 function goDetail(row) {

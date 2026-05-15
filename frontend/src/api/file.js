@@ -16,8 +16,14 @@ export function getFileUrl(id) {
   return `${request.defaults.baseURL}/files/${id}`
 }
 
-export function deleteFile(id) {
-  return request.delete(`/files/${id}`)
+export function deleteFile(id, achievementStatus) {
+  const params = {}
+  if (achievementStatus) params.achievementStatus = achievementStatus
+  return request.delete(`/files/${id}`, { params })
+}
+
+export function batchDeleteFiles(fileIds) {
+  return request.delete('/files/batch', { data: { fileIds } })
 }
 
 /** 以 blob 下载单个文件（保留原始文件名） */
@@ -36,5 +42,29 @@ export function downloadAllFiles(relatedType, relatedId) {
 export function downloadSelectedFiles(body) {
   return request.post('/files/download-selected', body, {
     responseType: 'blob'
+  })
+}
+
+/** 分页查询文件列表 */
+export function getFileList(params) {
+  return request.get('/files/list', { params })
+}
+
+/** 获取当前用户个人文件列表 */
+export function getMyFiles(params) {
+  return request.get('/files/my', { params })
+}
+
+/** 获取文件统计数据 */
+export function getFileStats() {
+  return request.get('/files/stats')
+}
+
+/** 一键导出所有文件（返回 blob ZIP） */
+export function exportAllFiles(onProgress) {
+  return request.get('/files/export-all', {
+    responseType: 'blob',
+    timeout: 600000,
+    onDownloadProgress: onProgress || null
   })
 }

@@ -33,6 +33,11 @@ const routes = [
         component: () => import('@/views/achievement/PublicList.vue')
       },
       {
+        path: 'achievement/manage',
+        name: 'AchievementManage',
+        component: () => import('@/views/achievement/Manage.vue')
+      },
+      {
         path: 'competition/list',
         name: 'CompetitionList',
         component: () => import('@/views/competition/List.vue')
@@ -51,16 +56,6 @@ const routes = [
         path: 'competition/edit/:id',
         name: 'CompetitionEdit',
         component: () => import('@/views/competition/Submit.vue')
-      },
-      {
-        path: 'review/list',
-        name: 'ReviewList',
-        component: () => import('@/views/review/List.vue')
-      },
-      {
-        path: 'review/detail/:id',
-        name: 'ReviewDetail',
-        component: () => import('@/views/review/Detail.vue')
       },
       {
         path: 'audit/list',
@@ -146,9 +141,19 @@ const routes = [
         component: () => import('@/views/user/Profile.vue')
       },
       {
+        path: 'user/files',
+        name: 'FileCenter',
+        component: () => import('@/views/user/FileCenter.vue')
+      },
+      {
         path: 'admin/users',
         name: 'UserManagement',
         component: () => import('@/views/admin/UserManagement.vue')
+      },
+      {
+        path: 'admin/files',
+        name: 'FileManagement',
+        component: () => import('@/views/admin/FileManagement.vue')
       },
       {
         path: 'admin/logs',

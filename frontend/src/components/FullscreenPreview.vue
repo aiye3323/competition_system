@@ -94,13 +94,20 @@
           <!-- 视频预览 -->
           <div v-else-if="isVideo" class="fs-video-stage">
             <video
+              ref="videoRef"
               :src="currentUrl"
               controls
               class="fs-video"
               autoplay
+              playsinline
+              @loadedmetadata="onVideoLoaded"
+              @play="onVideoPlay"
+              @pause="onVideoPause"
             >
               您的浏览器不支持视频播放
             </video>
+            <!-- 自定义覆盖控制提示 -->
+            <div class="fs-video-hint">空格键 播放/暂停 | F 全屏 | ← → 切换文件</div>
           </div>
 
           <!-- ZIP / 不支持预览 -->
@@ -169,6 +176,7 @@ const emit = defineEmits(['update:modelValue', 'close'])
 const visible = ref(false)
 const currentIndex = ref(0)
 const overlayRef = ref(null)
+const videoRef = ref(null)
 
 const totalCount = computed(() => props.files.length)
 const currentFile = computed(() => props.files[currentIndex.value] || null)
@@ -347,6 +355,31 @@ async function downloadCurrent() {
   }
 }
 
+// ========== 视频控制 ==========
+function onVideoLoaded() {}
+function onVideoPlay() {}
+function onVideoPause() {}
+
+function toggleVideoPlay() {
+  const video = videoRef.value
+  if (!video) return
+  if (video.paused) {
+    video.play()
+  } else {
+    video.pause()
+  }
+}
+
+function toggleVideoFullscreen() {
+  const video = videoRef.value
+  if (!video) return
+  if (video.requestFullscreen) {
+    video.requestFullscreen()
+  } else if (video.webkitRequestFullscreen) {
+    video.webkitRequestFullscreen()
+  }
+}
+
 // ========== 关闭 ==========
 function close() {
   visible.value = false
@@ -381,6 +414,19 @@ function onKeydown(e) {
     case '0':
       e.preventDefault()
       resetZoom()
+      break
+    case ' ':
+      if (isVideo.value) {
+        e.preventDefault()
+        toggleVideoPlay()
+      }
+      break
+    case 'f':
+    case 'F':
+      if (isVideo.value) {
+        e.preventDefault()
+        toggleVideoFullscreen()
+      }
       break
   }
 }
@@ -602,6 +648,18 @@ onBeforeUnmount(() => {
   max-width: 100%;
   max-height: 100%;
   outline: none;
+}
+
+.fs-video-hint {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  color: rgba(255,255,255,0.45);
+  pointer-events: none;
+  transition: opacity 0.6s;
+  opacity: 1;
 }
 
 /* --- 不支持预览 --- */

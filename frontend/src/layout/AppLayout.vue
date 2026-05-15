@@ -22,29 +22,14 @@
             <el-icon :size="18"><Plus /></el-icon>
             <span>提交成果</span>
           </router-link>
-          <el-dropdown trigger="hover" popper-class="nav-dropdown">
-            <span class="nav-item" :class="{ active: isAchievementActive }">
-              <el-icon :size="18"><Trophy /></el-icon>
-              <span>成果管理</span>
-              <el-icon :size="14" class="arrow"><ArrowDown /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item>
-                  <router-link to="/competition/list" class="dropdown-link">竞赛成果</router-link>
-                </el-dropdown-item>
-                <el-dropdown-item>
-                  <router-link to="/project/list" class="dropdown-link">创新项目</router-link>
-                </el-dropdown-item>
-                <el-dropdown-item>
-                  <router-link to="/paper/list" class="dropdown-link">论文成果</router-link>
-                </el-dropdown-item>
-                <el-dropdown-item>
-                  <router-link to="/software/list" class="dropdown-link">软件著作</router-link>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <router-link to="/achievement/manage" class="nav-item" active-class="active">
+            <el-icon :size="18"><Trophy /></el-icon>
+            <span>成果管理</span>
+          </router-link>
+          <router-link to="/user/files" class="nav-item" active-class="active">
+            <el-icon :size="18"><Folder /></el-icon>
+            <span>文件管理</span>
+          </router-link>
           <router-link v-if="hasRole('SECRETARY') || hasRole('LEADER')" to="/audit/list" class="nav-item" active-class="active">
             <el-icon :size="18"><Edit /></el-icon>
             <span>审核管理</span>
@@ -62,6 +47,9 @@
                 </el-dropdown-item>
                 <el-dropdown-item>
                   <router-link to="/admin/logs" class="dropdown-link">操作日志</router-link>
+                </el-dropdown-item>
+                <el-dropdown-item divided>
+                  <a class="dropdown-link" @click.prevent="handleExportAllFiles">导出已归档文件</a>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -103,10 +91,11 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  ArrowDown, Trophy, Plus, Edit,
+  ArrowDown, Trophy, Plus, Edit, Folder,
   Document, DataAnalysis, View, Stamp, Setting
 } from '@element-plus/icons-vue'
 import NotificationBell from '@/components/NotificationBell.vue'
+import { exportAllFiles } from '@/api/file'
 
 const route = useRoute()
 const router = useRouter()
@@ -126,17 +115,29 @@ const roleLabel = computed(() => {
   return map[userInfo.value.role] || '用户'
 })
 
-const isAchievementActive = computed(() =>
-  ['/competition/list', '/project/list', '/paper/list', '/software/list'].some(p => route.path.startsWith(p))
-  || ['/competition/detail', '/project/detail', '/paper/detail', '/software/detail'].some(p => route.path.startsWith(p))
-)
-
 const isSystemActive = computed(() =>
   route.path.startsWith('/admin')
 )
 
 function hasRole(role) {
   return userInfo.value.role === role
+}
+
+async function handleExportAllFiles() {
+  try {
+    const res = await exportAllFiles()
+    const blob = res.data || res
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const today = new Date().toISOString().substring(0, 10).replace(/-/g, '')
+    a.download = '科研成果文件导出_' + today + '.zip'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch {
+    ElMessage.error('导出失败，请重试')
+  }
 }
 
 function handleCommand(command) {
@@ -197,7 +198,7 @@ function handleCommand(command) {
 }
 
 .logo-text {
-  font-size: 16px;
+  font-size: var(--text-base);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-primary);
@@ -214,10 +215,10 @@ function handleCommand(command) {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-sm);
   height: var(--nav-height);
   padding: 0 14px;
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-regular);
   text-decoration: none;
@@ -283,14 +284,14 @@ function handleCommand(command) {
 
 .dropdown-name {
   display: block;
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .dropdown-role {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   margin-top: 2px;
 }

@@ -41,10 +41,10 @@ export const competitionAreas = [
   {
     key: 'other',
     label: '其他材料',
-    accept: 'image/jpeg,image/png,application/pdf,application/zip,application/x-zip-compressed',
-    acceptExt: '.jpg,.jpeg,.png,.pdf,.zip',
-    maxSize: 10,
-    hint: '支持 JPG、PNG、PDF、ZIP 格式，单个文件不超过10MB'
+    accept: 'image/jpeg,image/png,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,video/mp4',
+    acceptExt: '.jpg,.jpeg,.png,.pdf,.zip,.doc,.docx,.mp4',
+    maxSize: 50,
+    hint: '支持 JPG、PNG、PDF、DOC、DOCX、ZIP、MP4 格式，单个文件不超过50MB'
   }
 ]
 
@@ -88,29 +88,29 @@ export const paperAreas = [
   {
     key: 'draft',
     label: '投稿初稿',
-    accept: 'application/pdf',
-    acceptExt: '.pdf',
+    accept: 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    acceptExt: '.pdf,.doc,.docx',
     maxCount: 1,
     maxSize: 10,
-    hint: '支持 PDF 格式，单个文件不超过10MB'
+    hint: '支持 PDF、DOC、DOCX 格式，单个文件不超过10MB'
   },
   {
     key: 'final',
     label: '录用终稿',
-    accept: 'application/pdf',
-    acceptExt: '.pdf',
+    accept: 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    acceptExt: '.pdf,.doc,.docx',
     maxCount: 1,
     maxSize: 10,
-    hint: '支持 PDF 格式，单个文件不超过10MB'
+    hint: '支持 PDF、DOC、DOCX 格式，单个文件不超过10MB'
   },
   {
     key: 'review',
     label: '审稿意见及回复',
-    accept: 'application/pdf',
-    acceptExt: '.pdf',
+    accept: 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    acceptExt: '.pdf,.doc,.docx',
     maxCount: 1,
     maxSize: 10,
-    hint: '支持 PDF 格式，单个文件不超过10MB'
+    hint: '支持 PDF、DOC、DOCX 格式，单个文件不超过10MB'
   }
 ]
 
@@ -130,11 +130,11 @@ export const softwareAreas = [
   {
     key: 'swCert',
     label: '证书扫描件',
-    accept: 'image/png',
-    acceptExt: '.png',
+    accept: 'image/png,image/jpeg',
+    acceptExt: '.png,.jpg,.jpeg',
     maxCount: 1,
     maxSize: 10,
-    hint: '支持 PNG 格式，单个文件不超过10MB'
+    hint: '支持 PNG、JPG 格式，单个文件不超过10MB'
   }
 ]
 

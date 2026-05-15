@@ -37,12 +37,20 @@
   --info-color: #6B7280;
   --info-light: #F3F4F6;
 
+  /* === 间距系统 (4pt base) === */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
   /* === 布局 === */
   --nav-height: 56px;
   --card-radius: 8px;
   --card-padding: 24px;
   --content-max-width: 1280px;
-  --page-padding: 28px;
+  --page-padding: 24px;
 
   /* === 登录页 === */
   --login-bg-start: #312E81;
@@ -51,6 +59,25 @@
   /* === 过渡 === */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* === 缓动曲线 === */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* === 排版 (Major Third, 1.25 ratio) === */
+  --text-xs: 0.75rem;     /* 12px — 标签、辅助 */
+  --text-sm: 0.875rem;    /* 14px — 表格、表单 */
+  --text-base: 1rem;      /* 16px — 正文 */
+  --text-lg: 1.125rem;    /* 18px — 卡片标题 */
+  --text-xl: 1.25rem;     /* 20px — 页面标题 */
+  --text-2xl: 1.5rem;     /* 24px — 区块标题 */
+  --text-3xl: 1.875rem;   /* 30px — 统计数据 */
+
+  /* === 行高 === */
+  --leading-tight: 1.3;   /* 标题 */
+  --leading-normal: 1.5;  /* 表格行、表单 */
+  --leading-relaxed: 1.6; /* 正文 */
 }
 
 /* ========== 全局重置 ========== */
@@ -69,8 +96,8 @@ html, body, #app {
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
   background-color: var(--app-bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -113,7 +140,8 @@ body {
 
 .el-table th.el-table__cell {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
   letter-spacing: 0.01em;
 }
 
@@ -131,16 +159,39 @@ body {
   --el-button-active-border-color: var(--primary-dark);
   border-radius: 6px;
   font-weight: 500;
+  transition: transform 0.1s var(--ease-out-quart), box-shadow var(--transition-fast);
+}
+
+.el-button--primary:active {
+  transform: scale(0.97);
 }
 
 .el-button--default {
   border-radius: 6px;
   --el-button-hover-border-color: var(--primary-color);
   --el-button-hover-text-color: var(--primary-color);
+  transition: transform 0.1s var(--ease-out-quart), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.el-button--default:active {
+  transform: scale(0.97);
+}
+
+.el-button--default.is-disabled,
+.el-button--default:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .el-button.is-link {
   color: var(--primary-color);
+  transition: color var(--transition-fast);
+}
+
+.el-button.is-link.is-disabled,
+.el-button.is-link:disabled {
+  color: var(--text-placeholder);
+  cursor: not-allowed;
 }
 
 /* 标签：圆角 pill，浅底深字 */
@@ -249,6 +300,11 @@ body {
   margin: 0 auto;
 }
 
+.page-container-medium {
+  max-width: 850px;
+  margin: 0 auto;
+}
+
 .page-container-wide {
   max-width: var(--content-max-width);
   margin: 0 auto;
@@ -258,40 +314,83 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-lg);
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
+  line-height: var(--leading-tight);
   color: var(--text-primary);
   letter-spacing: -0.01em;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
 }
 
 .pagination-wrapper {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: var(--space-lg);
 }
 
 .card-wrapper {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-lg);
 }
 
 /* 操作按钮组 */
 .action-buttons {
   display: flex;
-  gap: 6px;
+  gap: var(--space-sm);
   flex-wrap: wrap;
   align-items: center;
 }
 
 /* 表格内操作链接 */
 .el-table .el-button--small.is-link {
-  padding: 3px 6px;
+  padding: 4px var(--space-sm);
   font-size: 13px;
   font-weight: 500;
+}
+
+/* 表单全局间距 */
+.el-form-item {
+  margin-bottom: var(--space-md);
+}
+
+.el-form-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 表单内联模式下保持间距 */
+.el-form--inline .el-form-item {
+  margin-right: var(--space-md);
+}
+
+/* el-row 图表行间距 */
+.chart-row {
+  margin-bottom: var(--space-lg);
+}
+
+/* 标题默认样式（非 page-header 内的独立标题） */
+h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-lg);
+}
+
+h3 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
 }
 
 /* 文本色彩辅助 */
@@ -303,6 +402,10 @@ body {
   color: var(--text-regular);
 }
 
+.font-semibold {
+  font-weight: 600;
+}
+
 /* ========== 页面过渡 ========== */
 .page-fade-enter-active,
 .page-fade-leave-active {
@@ -312,6 +415,59 @@ body {
 .page-fade-enter-from,
 .page-fade-leave-to {
   opacity: 0;
+}
+
+.page-fade-enter-active {
+  transition: opacity 0.2s var(--ease-out-quart), transform 0.25s var(--ease-out-quart);
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+/* ========== 关键帧 ========== */
+@keyframes success-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-success {
+  animation: success-pulse 0.5s var(--ease-out-quart);
+}
+
+.animate-fade-up {
+  animation: fade-up 0.35s var(--ease-out-quart) both;
+}
+
+/* 焦点指示器 (无障碍) */
+*:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ========== 上传组件修复 ========== */

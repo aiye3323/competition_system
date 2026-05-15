@@ -36,8 +36,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/test").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/files/list", "/api/files/stats", "/api/statistics/export-all").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/files/my", "/api/files/export-all").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/files/*", "/api/files/*/download").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/files/upload", "/api/files/upload/batch", "/api/files/download-selected").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/files/**").authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/ocr/**").authenticated()
                         .requestMatchers("/api/logs/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 );

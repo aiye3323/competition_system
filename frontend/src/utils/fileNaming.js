@@ -31,10 +31,10 @@
 // ============================================================
 
 const TYPE_LABEL = {
-  COMPETITION: '竞赛',
-  PROJECT: '项目',
-  PAPER: '论文',
-  SOFTWARE: '软著'
+  COMPETITION: '学科竞赛',
+  PROJECT: '创新项目',
+  PAPER: '学术论文',
+  SOFTWARE: '软件著作'
 }
 
 /** 每个成果类型对应的"名称字段"提取规则 */
@@ -263,7 +263,7 @@ export function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = encodeURIComponent(fileName)
+  a.download = fileName
   a.style.display = 'none'
   document.body.appendChild(a)
   a.click()

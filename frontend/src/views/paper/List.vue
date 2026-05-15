@@ -89,6 +89,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPaperList, deletePaper, exportPaper } from '@/api/paper'
 import { secretaryApprovePaper, secretaryRejectPaper, leaderApprovePaper, leaderRejectPaper } from '@/api/audit'
 import AuditDialog from '@/components/AuditDialog.vue'
+import { statusType, statusLabel } from '@/utils/statusMap'
 
 const list = ref([])
 const total = ref(0)
@@ -146,15 +147,6 @@ function resetFilters() {
   fetchData()
 }
 
-function statusType(s) {
-  const m = { PENDING: 'warning', PENDING_LEADER: 'warning', APPROVED: 'success', REJECTED: 'danger', ARCHIVED: '' }
-  return m[s] || 'info'
-}
-function statusLabel(s) {
-  const m = { PENDING: '待审核', PENDING_LEADER: '领导审核中', APPROVED: '已通过', REJECTED: '已驳回', ARCHIVED: '已归档' }
-  return m[s] || s
-}
-
 function handleAudit(row) {
   auditRow.value = row
   auditVisible.value = true
@@ -165,7 +157,6 @@ async function handleExport() {
   try {
     const params = {}
     if (filters.journalLevel) params.journalLevel = filters.journalLevel
-    if (filters.status) params.status = filters.status
     const res = await exportPaper(params)
     const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)

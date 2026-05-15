@@ -1,9 +1,11 @@
 package com.competition.service;
 
+import com.competition.entity.AuditLog;
 import com.competition.entity.Competition;
 import com.competition.entity.Paper;
 import com.competition.entity.Project;
 import com.competition.entity.Software;
+import com.competition.repository.AuditLogRepository;
 import com.competition.repository.CompetitionRepository;
 import com.competition.repository.PaperRepository;
 import com.competition.repository.ProjectRepository;
@@ -30,6 +32,7 @@ public class ExportService {
     private final ProjectRepository projectRepository;
     private final PaperRepository paperRepository;
     private final SoftwareRepository softwareRepository;
+    private final AuditLogRepository auditLogRepository;
 
     private static final String[] UNIFIED_HEADERS = {"序号", "成果类型", "名称", "申报人", "所在学院", "级别", "二级分类", "日期", "状态"};
 
@@ -162,6 +165,195 @@ public class ExportService {
                 fillRow(row, vals, wb);
             }
         });
+    }
+
+    // ──────────────────────────────────────────────
+    // 统一导出：四类成果合并为一个 Sheet
+    // ──────────────────────────────────────────────
+
+    // 通用列(8) + 竞赛专属(7) + 项目专属(4) + 软著专属(4) + 论文专属(6) = 29 列
+    private static final String[] MERGED_HEADERS = {
+        "序号", "成果类型", "名称/标题", "申报人", "申报时间",
+        "审核状态", "审核意见", "归档时间",
+        "竞赛类别", "获奖级别", "获奖等级", "获奖单位", "主办单位", "指导教师", "参赛选手",
+        "立项级别", "立项类型", "立项人员", "立项时间",
+        "所属单位", "著作权人", "登记号", "登记日期",
+        "期刊级别", "期刊名称", "论文关键词", "论文作者", "投稿时间", "录用时间"
+    };
+
+    private static final String EMPTY = "";
+
+    public byte[] exportAllAchievements(Long userId, String role) {
+        List<Object[]> rows = new ArrayList<>();
+
+        // 学科竞赛: 通用8 + 竞赛7 = 29
+        List<Competition> competitions = queryCompetitions(userId, role);
+        for (Competition c : competitions) {
+            String opinion = getLatestOpinion("COMPETITION", c.getId());
+            String appName = c.getApplicant() != null ? c.getApplicant().getRealName() : "";
+            rows.add(new Object[]{
+                0, "学科竞赛", c.getCompetitionName(), appName,
+                formatTime(c.getApplyTime()), statusLabel(c.getStatus()), opinion, formatTime(c.getArchiveTime()),
+                c.getCategory(), c.getAwardLevel(), c.getAwardGrade(),
+                c.getAwardUnit(), c.getOrganizer(), c.getAdvisor(), c.getParticipants(),
+                EMPTY, EMPTY, EMPTY, EMPTY,
+                EMPTY, EMPTY, EMPTY, EMPTY,
+                EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY
+            });
+        }
+
+        // 创新项目: 通用8 + 项目4(指导教师与竞赛共用列13)
+        List<Project> projects = queryProjects(userId, role);
+        for (Project p : projects) {
+            String opinion = getLatestOpinion("PROJECT", p.getId());
+            String appName = p.getApplicant() != null ? p.getApplicant().getRealName() : "";
+            rows.add(new Object[]{
+                0, "创新项目", p.getProjectName(), appName,
+                formatTime(p.getApplyTime()), statusLabel(p.getStatus()), opinion, formatTime(p.getArchiveTime()),
+                EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, p.getAdvisor(), EMPTY,
+                p.getProjectLevel(), p.getProjectType(), p.getMembers(), formatDate(p.getEstablishTime()),
+                EMPTY, EMPTY, EMPTY, EMPTY,
+                EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY
+            });
+        }
+
+        // 学术论文
+        List<Paper> papers = queryPapers(userId, role);
+        for (Paper p : papers) {
+            String opinion = getLatestOpinion("PAPER", p.getId());
+            String appName = p.getApplicant() != null ? p.getApplicant().getRealName() : "";
+            rows.add(new Object[]{
+                0, "学术论文", p.getTitle(), appName,
+                formatTime(p.getApplyTime()), statusLabel(p.getStatus()), opinion, formatTime(p.getArchiveTime()),
+                EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+                EMPTY, EMPTY, EMPTY, EMPTY,
+                EMPTY, EMPTY, EMPTY, EMPTY,
+                p.getJournalLevel(), p.getJournalName(), p.getKeywords(), p.getAuthors(),
+                formatDate(p.getSubmissionDate()), formatDate(p.getAcceptanceDate())
+            });
+        }
+
+        // 软件著作权
+        List<Software> softwares = querySoftwares(userId, role);
+        for (Software s : softwares) {
+            String opinion = getLatestOpinion("SOFTWARE", s.getId());
+            String appName = s.getApplicant() != null ? s.getApplicant().getRealName() : "";
+            rows.add(new Object[]{
+                0, "软件著作权", s.getSoftwareName(), appName,
+                formatTime(s.getApplyTime()), statusLabel(s.getStatus()), opinion, formatTime(s.getArchiveTime()),
+                EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+                EMPTY, EMPTY, EMPTY, EMPTY,
+                s.getAffiliation(), s.getCopyrightOwner(), s.getRegistrationNumber(), formatDate(s.getRegistrationDate()),
+                EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY
+            });
+        }
+
+        // 按申报时间倒序
+        rows.sort((a, b) -> {
+            String ta = (String) a[4], tb = (String) b[4];
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+        });
+
+        for (int i = 0; i < rows.size(); i++) {
+            rows.get(i)[0] = i + 1;
+        }
+
+        return buildMergedExcel(rows);
+    }
+
+    private List<Competition> queryCompetitions(Long userId, String role) {
+        if ("STUDENT".equals(role) || "TEACHER".equals(role)) {
+            return competitionRepository.findByApplicantId(userId);
+        }
+        return competitionRepository.findAll();
+    }
+
+    private List<Project> queryProjects(Long userId, String role) {
+        if ("STUDENT".equals(role) || "TEACHER".equals(role)) {
+            return projectRepository.findByApplicantId(userId);
+        }
+        return projectRepository.findAll();
+    }
+
+    private List<Paper> queryPapers(Long userId, String role) {
+        if ("STUDENT".equals(role) || "TEACHER".equals(role)) {
+            return paperRepository.findByApplicantId(userId);
+        }
+        return paperRepository.findAll();
+    }
+
+    private List<Software> querySoftwares(Long userId, String role) {
+        if ("STUDENT".equals(role) || "TEACHER".equals(role)) {
+            return softwareRepository.findByApplicantId(userId);
+        }
+        return softwareRepository.findAll();
+    }
+
+    private String getLatestOpinion(String achievementType, Long achievementId) {
+        List<AuditLog> logs = auditLogRepository
+            .findByAchievementTypeAndAchievementIdOrderByAuditTimeAsc(achievementType, achievementId);
+        if (logs == null || logs.isEmpty()) return "";
+        AuditLog latest = logs.get(logs.size() - 1);
+        return latest.getOpinion() != null ? latest.getOpinion() : "";
+    }
+
+    private String formatTime(LocalDateTime time) {
+        if (time == null) return "";
+        return time.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    private String formatDate(java.time.LocalDate date) {
+        if (date == null) return "";
+        return date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    }
+
+    private byte[] buildMergedExcel(List<Object[]> rows) {
+        try (SXSSFWorkbook wb = new SXSSFWorkbook(100)) {
+            CellStyle headerStyle = createHeaderStyle(wb);
+            CellStyle cellStyle = createCellStyle(wb);
+            CellStyle dateStyle = createDateStyle(wb);
+
+            Sheet sheet = wb.createSheet("全部成果汇总");
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < MERGED_HEADERS.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(MERGED_HEADERS[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (int i = 0; i < rows.size(); i++) {
+                Row row = sheet.createRow(i + 1);
+                Object[] vals = rows.get(i);
+                for (int j = 0; j < vals.length; j++) {
+                    Cell cell = row.createCell(j);
+                    cell.setCellStyle(j == 6 ? cellStyle : cellStyle); // 审核意见列用普通样式
+                    Object val = vals[j];
+                    if (val instanceof Number) {
+                        cell.setCellValue(((Number) val).doubleValue());
+                    } else {
+                        cell.setCellValue(val != null ? val.toString() : "");
+                    }
+                }
+            }
+
+            int[] widths = {6, 10, 28, 12, 20, 14, 28, 20,
+                10, 10, 10, 14, 14, 10, 14,
+                10, 12, 14, 14,
+                14, 14, 18, 14,
+                12, 18, 14, 14, 14, 14};
+            for (int i = 0; i < widths.length; i++) {
+                sheet.setColumnWidth(i, 256 * widths[i]);
+            }
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            wb.write(bos);
+            wb.dispose();
+            return bos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("导出Excel失败: " + e.getMessage(), e);
+        }
     }
 
     private String statusLabel(String status) {

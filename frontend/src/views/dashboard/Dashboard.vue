@@ -70,6 +70,14 @@
         <el-icon :size="28"><View /></el-icon>
         <span>全院成果</span>
       </div>
+      <div class="quick-action-card" @click="handleExportAll" :class="{ 'is-loading': exportLoading }">
+        <el-icon :size="28"><Download /></el-icon>
+        <span>{{ exportLoading ? '打包中...' : '导出已归档文件' }}</span>
+      </div>
+      <div class="quick-action-card" @click="handleExportExcel" :class="{ 'is-loading': excelExportLoading }">
+        <el-icon :size="28"><Download /></el-icon>
+        <span>{{ excelExportLoading ? '导出中...' : '导出成果汇总' }}</span>
+      </div>
     </div>
 
     <!-- 图表行 -->
@@ -107,9 +115,9 @@
     <div class="chart-card">
       <h3 class="chart-title">最近归档成果</h3>
       <el-table :data="stats.recentItems" stripe style="width:100%">
-        <el-table-column prop="typeLabel" label="类型" width="100">
+        <el-table-column prop="typeLabel" label="成果类型" width="110">
           <template #default="{ row }">
-            <el-tag :type="typeTag(row.type)" size="small" effect="plain">{{ row.typeLabel }}</el-tag>
+            <el-tag :color="typeColor(row.type)" size="small" effect="dark">{{ row.typeLabel }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="title" label="名称" show-overflow-tooltip />
@@ -129,11 +137,59 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Trophy, Folder, Document, Stamp } from '@element-plus/icons-vue'
+import { Trophy, Folder, Document, Stamp, Download } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getDashboardStats } from '@/api/statistics'
+import { getDashboardStats, exportAllAchievementsToExcel } from '@/api/statistics'
+import { exportAllFiles } from '@/api/file'
+import { typeTag, typeColor } from '@/utils/statusMap'
 
 const router = useRouter()
+
+const exportLoading = ref(false)
+const excelExportLoading = ref(false)
+
+async function handleExportAll() {
+  if (exportLoading.value) return
+  exportLoading.value = true
+  try {
+    const res = await exportAllFiles()
+    const blob = res.data || res
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const today = new Date().toISOString().substring(0, 10).replace(/-/g, '')
+    a.download = '科研成果文件导出_' + today + '.zip'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch {
+    ElMessage.error('导出失败，请重试')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+async function handleExportExcel() {
+  if (excelExportLoading.value) return
+  excelExportLoading.value = true
+  try {
+    const res = await exportAllAchievementsToExcel()
+    const blob = res || (res.data)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const today = new Date().toISOString().substring(0, 10).replace(/-/g, '')
+    a.download = '科研成果汇总_' + today + '.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch {
+    ElMessage.error('导出失败，请重试')
+  } finally {
+    excelExportLoading.value = false
+  }
+}
 
 const stats = ref({
   totalCompetitions: 0, totalProjects: 0, totalPapers: 0, totalSoftware: 0, totalAchievements: 0,
@@ -148,7 +204,7 @@ const levelChartRef = ref(null)
 
 let pieChart = null, yearChart = null, collegeChart = null, levelChart = null
 
-const CHART_COLORS = ['#4C51BF', '#059669', '#D97706', '#7C3AED']
+const CHART_COLORS = ['#4C51BF', '#059669', '#D97706', '#C2415C']
 
 function initCharts() {
   if (!stats.value.totalAchievements && !stats.value.byType.length) return
@@ -182,7 +238,7 @@ function initYearChart() {
   yearChart.setOption({
     tooltip: { trigger: 'axis' },
     legend: { bottom: 0, textStyle: { color: '#4B5563' } },
-    grid: { left: 48, right: 16, bottom: 32, top: 16 },
+    grid: { left: 48, right: 16, bottom: 50, top: 16 },
     xAxis: { type: 'category', data: years, axisLine: { lineStyle: { color: '#E8E4DF' } }, axisLabel: { color: '#4B5563' } },
     yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F0EDE9' } }, axisLabel: { color: '#9CA3AF' } },
     series: [
@@ -206,9 +262,9 @@ function initCollegeChart() {
   }
   collegeChart.setOption({
     tooltip: { trigger: 'axis' },
-    grid: { left: 140, right: 40, bottom: 16, top: 16 },
+    grid: { left: 150, right: 60, bottom: 24, top: 16 },
     xAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F0EDE9' } }, axisLabel: { color: '#9CA3AF' } },
-    yAxis: { type: 'category', data: keys, axisLine: { lineStyle: { color: '#E8E4DF' } }, axisLabel: { color: '#4B5563' } },
+    yAxis: { type: 'category', data: keys, axisLine: { lineStyle: { color: '#E8E4DF' } }, axisLabel: { color: '#4B5563', width: 130, overflow: 'break' } },
     series: [{ type: 'bar', data: values, itemStyle: { color: '#4C51BF', borderRadius: [0, 4, 4, 0] }, barMaxWidth: 20, label: { show: true, position: 'right', color: '#4B5563' } }]
   })
 }
@@ -236,15 +292,15 @@ function initLevelChart() {
   const allKeys = [...new Set([...awardKeys, ...projKeys, ...journalKeys])]
   for (const k of allKeys) {
     categories.push(k)
-    awardData.push(stats.value.byAwardLevel?.[k] || 0)
-    projData.push(stats.value.byProjectLevel?.[k] || 0)
-    paperData.push(stats.value.byJournalLevel?.[k] || 0)
+    awardData.push(stats.value.byAwardLevel?.[k] ?? null)
+    projData.push(stats.value.byProjectLevel?.[k] ?? null)
+    paperData.push(stats.value.byJournalLevel?.[k] ?? null)
   }
 
   levelChart.setOption({
     tooltip: { trigger: 'axis' },
     legend: { bottom: 0, textStyle: { color: '#4B5563' }, data: ['竞赛获奖', '创新项目', '学术论文'] },
-    grid: { left: 140, right: 40, bottom: 32, top: 16 },
+    grid: { left: 140, right: 60, bottom: 50, top: 16 },
     xAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F0EDE9' } }, axisLabel: { color: '#9CA3AF' } },
     yAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: '#E8E4DF' } }, axisLabel: { color: '#4B5563' } },
     series: [
@@ -257,10 +313,6 @@ function initLevelChart() {
 
 function handleResize() {
   pieChart?.resize(); yearChart?.resize(); collegeChart?.resize(); levelChart?.resize()
-}
-
-function typeTag(type) {
-  return { COMPETITION: '', PROJECT: 'success', PAPER: 'warning', SOFTWARE: 'info' }[type] || 'info'
 }
 
 function goDetail(row) {
@@ -298,14 +350,23 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 20px 16px;
+  padding: var(--space-lg) var(--space-md);
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--card-radius);
   cursor: pointer;
   color: var(--primary-color);
-  transition: all var(--transition-fast);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+  will-change: transform;
+  animation: fade-up 0.35s var(--ease-out-quart) both;
 }
+
+.quick-action-card:nth-child(1) { animation-delay: 0.08s; }
+.quick-action-card:nth-child(2) { animation-delay: 0.14s; }
+.quick-action-card:nth-child(3) { animation-delay: 0.2s; }
+.quick-action-card:nth-child(4) { animation-delay: 0.26s; }
+.quick-action-card:nth-child(5) { animation-delay: 0.32s; }
+.quick-action-card:nth-child(6) { animation-delay: 0.38s; }
 
 .quick-action-card:hover {
   background: var(--primary-light);
@@ -315,7 +376,7 @@ onUnmounted(() => {
 }
 
 .quick-action-card span {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-regular);
   white-space: nowrap;
@@ -338,7 +399,14 @@ onUnmounted(() => {
   align-items: center;
   gap: 16px;
   transition: box-shadow var(--transition-normal);
+  animation: fade-up 0.4s var(--ease-out-quart) both;
 }
+
+.stat-item:nth-child(1) { animation-delay: 0.05s; }
+.stat-item:nth-child(2) { animation-delay: 0.1s; }
+.stat-item:nth-child(3) { animation-delay: 0.15s; }
+.stat-item:nth-child(4) { animation-delay: 0.2s; }
+.stat-item:nth-child(5) { animation-delay: 0.25s; }
 
 .stat-item:hover {
   box-shadow: var(--shadow-md);
@@ -374,39 +442,35 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: var(--text-3xl);
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   letter-spacing: -0.02em;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   margin-top: 2px;
   font-weight: 500;
 }
 
 .stat-total-value {
-  font-size: 28px;
+  font-size: var(--text-3xl);
   font-weight: 700;
   color: #fff;
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   letter-spacing: -0.02em;
 }
 
 .stat-total-label {
-  font-size: 13px;
+  font-size: var(--text-xs);
   color: rgba(255,255,255,0.75);
   font-weight: 500;
 }
 
 /* 图表卡片 */
-.chart-row {
-  margin-bottom: 20px;
-}
-
 .chart-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
@@ -415,10 +479,11 @@ onUnmounted(() => {
 }
 
 .chart-title {
-  font-size: 15px;
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-md);
+  line-height: var(--leading-tight);
 }
 
 .chart-box {

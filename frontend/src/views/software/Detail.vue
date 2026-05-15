@@ -35,13 +35,13 @@
     </el-card>
 
     <el-card class="card-wrapper">
-      <template #header><span style="font-weight:bold;">审核记录</span></template>
+      <template #header><span class="font-semibold">审核记录</span></template>
       <el-timeline v-if="auditLogs.length > 0">
         <el-timeline-item
           v-for="log in auditLogs"
           :key="log.id"
-          :timestamp="log.auditTime"
-          :color="log.result === 'APPROVED' ? '#67c23a' : '#f56c6c'"
+          :timestamp="formatTime(log.auditTime)"
+          :type="log.result === 'APPROVED' ? 'success' : 'danger'"
         >
           <p><strong>{{ log.auditorName }}</strong>（{{ log.auditorRole === 'SECRETARY' ? '科研秘书' : '学院领导' }}）</p>
           <p>结果：{{ log.result === 'APPROVED' ? '通过' : '退回' }}</p>
@@ -59,6 +59,7 @@ import { useRoute } from 'vue-router'
 import { getSoftwareDetail } from '@/api/software'
 import { getSoftwareAuditLogs } from '@/api/audit'
 import AttachmentDisplay from '@/components/AttachmentDisplay.vue'
+import { statusType, statusLabel } from '@/utils/statusMap'
 
 const route = useRoute()
 const data = ref({})
@@ -69,17 +70,15 @@ const contextLabel = computed(() => {
   return ['软著', data.value.applicantName, data.value.softwareName].filter(Boolean).join('_')
 })
 
-function statusType(s) {
-  return { PENDING: 'warning', PENDING_LEADER: 'warning', ARCHIVED: 'success', REJECTED: 'danger' }[s] || 'info'
-}
-function statusLabel(s) {
-  return { PENDING: '待审核', PENDING_LEADER: '领导审核中', ARCHIVED: '已归档', REJECTED: '已驳回' }[s] || s
-}
-
 onMounted(async () => {
   const res = await getSoftwareDetail(route.params.id)
   if (res.code === 200) data.value = res.data
   const logRes = await getSoftwareAuditLogs(route.params.id)
   if (logRes.code === 200) auditLogs.value = logRes.data
 })
+
+function formatTime(time) {
+  if (!time) return ''
+  return time.substring(0, 10) + '  ' + time.substring(11, 19)
+}
 </script>
