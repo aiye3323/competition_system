@@ -12,6 +12,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -111,7 +113,10 @@ public class FileController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + displayName + "\"")
+                        "attachment; filename=\""
+                                + displayName
+                                + "\"; filename*=UTF-8''"
+                                + encodeRFC5987(displayName))
                 .body(resource);
     }
 
@@ -119,5 +124,63 @@ public class FileController {
     public Result<Void> deleteFile(@PathVariable Long id) {
         fileStorageService.deleteFile(id);
         return Result.success(null);
+    }
+
+    /**
+     * 打包下载单个成果的全部证明材料
+     */
+    @GetMapping("/download-all/{relatedType}/{relatedId}")
+    public ResponseEntity<?> downloadAllFiles(@PathVariable String relatedType,
+                                               @PathVariable Long relatedId) {
+        List<FileEntity> files = fileRepository.findByRelatedTypeAndRelatedId(relatedType, relatedId);
+
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.status(404).body(Result.error(404, "该成果没有证明材料"));
+        }
+
+        byte[] zipBytes = fileStorageService.zipFiles(files);
+
+        String zipName = relatedType + "_" + relatedId + "_全部材料.zip";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\""
+                                + zipName.replaceAll("[\"\\n\\r]", "_")
+                                + "\"; filename*=UTF-8''"
+                                + encodeRFC5987(zipName))
+                .body(zipBytes);
+    }
+
+    /**
+     * 打包下载选中的文件（通过文件 ID 列表）
+     */
+    @PostMapping("/download-selected")
+    public ResponseEntity<?> downloadSelectedFiles(@RequestBody Map<String, List<Long>> body) {
+        List<Long> fileIds = body.get("fileIds");
+        if (fileIds == null || fileIds.isEmpty()) {
+            return ResponseEntity.status(400).body(Result.error(400, "未选择文件"));
+        }
+
+        List<FileEntity> files = fileRepository.findAllById(fileIds);
+        if (files.isEmpty()) {
+            return ResponseEntity.status(404).body(Result.error(404, "文件不存在"));
+        }
+
+        byte[] zipBytes = fileStorageService.zipFiles(files);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"selected_materials.zip\"")
+                .body(zipBytes);
+    }
+
+    /**
+     * RFC 5987 文件名编码（支持中文）
+     */
+    private String encodeRFC5987(String filename) {
+        return URLEncoder.encode(filename, StandardCharsets.UTF_8)
+                .replaceAll("\\+", "%20");
     }
 }

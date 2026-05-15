@@ -21,7 +21,12 @@
 
       <div style="margin-top:24px;">
         <h3>证明材料</h3>
-        <AttachmentDisplay :file-urls="detail.fileUrlList" :context-label="contextLabel" />
+        <AttachmentDisplay
+          :file-urls="detail.fileUrlList"
+          :context-label="contextLabel"
+          related-type="PROJECT"
+          :related-id="detail?.id"
+        />
       </div>
     </el-card>
 

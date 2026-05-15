@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,8 +21,12 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -145,5 +151,84 @@ public class FileStorageService {
         if (ext.matches("\\.(zip|rar|7z|tar|gz)")) return "ARCHIVE";
         if (ext.matches("\\.(mp4|avi|mov|wmv|flv)")) return "VIDEO";
         return "OTHER";
+    }
+
+    /**
+     * 获取原始文件名（不含路径）
+     */
+    public String getOriginalName(String storagePath) {
+        String name = storagePath.replace('\\', '/');
+        int idx = name.lastIndexOf('/');
+        return idx >= 0 ? name.substring(idx + 1) : name;
+    }
+
+    /**
+     * 构建下载文件名：【类型】_【申报人】_【名称】_【文件用途】.扩展名
+     */
+    public String buildDownloadName(String typeName, String applicantName,
+                                     String achievementName, String fileLabel, String extension) {
+        String safeName = (typeName + "_" + applicantName + "_" + achievementName + "_" + fileLabel)
+                .replaceAll("[\\\\/:*?\"<>|]", "")
+                .replaceAll("\\s+", "");
+        if (!extension.startsWith(".")) {
+            extension = "." + extension;
+        }
+        return safeName + extension;
+    }
+
+    /**
+     * 将多个文件打包为 ZIP 字节数组（内存中完成）
+     * @param entities 文件实体列表
+     * @return ZIP 字节数组
+     */
+    public byte[] zipFiles(List<FileEntity> entities) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ZipOutputStream zos = new ZipOutputStream(baos)) {
+
+            Set<String> usedNames = new HashSet<>();
+
+            for (FileEntity entity : entities) {
+                Path filePath = baseUploadPath.resolve(entity.getStoragePath()).normalize();
+
+                if (!filePath.startsWith(baseUploadPath)) {
+                    continue;
+                }
+
+                if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
+                    continue;
+                }
+
+                String entryName = entity.getOriginalName();
+                // 同名文件去重
+                int dupCount = 1;
+                String candidate = entryName;
+                while (usedNames.contains(candidate)) {
+                    int dotIdx = entryName.lastIndexOf('.');
+                    String base = dotIdx >= 0 ? entryName.substring(0, dotIdx) : entryName;
+                    String ext = dotIdx >= 0 ? entryName.substring(dotIdx) : "";
+                    candidate = base + "(" + dupCount + ")" + ext;
+                    dupCount++;
+                }
+                usedNames.add(candidate);
+
+                ZipEntry zipEntry = new ZipEntry(candidate);
+                zos.putNextEntry(zipEntry);
+
+                try (InputStream is = Files.newInputStream(filePath)) {
+                    byte[] buffer = new byte[8192];
+                    int len;
+                    while ((len = is.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
+                    }
+                }
+                zos.closeEntry();
+            }
+
+            zos.finish();
+            return baos.toByteArray();
+
+        } catch (IOException e) {
+            throw new RuntimeException("ZIP 打包失败", e);
+        }
     }
 }

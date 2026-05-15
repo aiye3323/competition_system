@@ -18,7 +18,12 @@
 
       <div style="margin-top:24px;">
         <h3>证明材料</h3>
-        <AttachmentDisplay :file-urls="data.fileUrlList" :context-label="contextLabel" />
+        <AttachmentDisplay
+          :file-urls="data.fileUrlList"
+          :context-label="contextLabel"
+          related-type="SOFTWARE"
+          :related-id="data?.id"
+        />
       </div>
 
       <div style="margin-top:24px;">

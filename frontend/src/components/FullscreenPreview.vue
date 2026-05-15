@@ -62,10 +62,34 @@
             class="fs-pdf-iframe"
           />
 
-          <!-- 不支持预览 -->
+          <!-- Office 文档预览 (DOC/DOCX/XLS/XLSX/PPT/PPTX) -->
+          <iframe
+            v-else-if="isOfficeDoc"
+            :src="officeViewerUrl"
+            class="fs-pdf-iframe"
+          />
+
+          <!-- 文本预览 -->
+          <div v-else-if="isTxt" class="fs-text-viewer">
+            <pre>{{ textContent }}</pre>
+          </div>
+
+          <!-- 视频预览 -->
+          <div v-else-if="isVideo" class="fs-video-stage">
+            <video
+              :src="currentUrl"
+              controls
+              class="fs-video"
+              autoplay
+            >
+              您的浏览器不支持视频播放
+            </video>
+          </div>
+
+          <!-- ZIP / 不支持预览 -->
           <div v-else class="fs-unsupported">
             <el-icon :size="72"><WarningFilled /></el-icon>
-            <p>此文件格式不支持预览</p>
+            <p>{{ isZip ? 'ZIP 压缩包无法在线预览，请下载后查看' : '此文件格式不支持预览' }}</p>
             <el-button type="primary" @click="downloadCurrent">下载文件</el-button>
           </div>
         </div>
@@ -101,11 +125,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import {
   Download, Close, ArrowLeft, ArrowRight,
   ZoomIn, ZoomOut, RefreshLeft, WarningFilled
 } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -141,6 +166,41 @@ const isPdf = computed(() => {
   const name = (currentFile.value?.originalName || currentFile.value?.url || '').toLowerCase()
   return name.endsWith('.pdf')
 })
+
+const isOfficeDoc = computed(() => {
+  const name = (currentFile.value?.originalName || currentFile.value?.url || '').toLowerCase()
+  return /\.(doc|docx|xls|xlsx|ppt|pptx)$/i.test(name)
+})
+
+const isTxt = computed(() => {
+  const name = (currentFile.value?.originalName || currentFile.value?.url || '').toLowerCase()
+  return name.endsWith('.txt')
+})
+
+const isVideo = computed(() => {
+  const f = currentFile.value
+  if (f?.fileType === 'VIDEO') return true
+  const name = (f?.originalName || f?.url || '').toLowerCase()
+  return /\.(mp4|avi|mov|wmv|flv|webm)$/i.test(name)
+})
+
+const isZip = computed(() => {
+  const f = currentFile.value
+  if (f?.fileType === 'ARCHIVE') return true
+  const name = (f?.originalName || f?.url || '').toLowerCase()
+  return /\.(zip|rar|7z|tar|gz)$/i.test(name)
+})
+
+const officeViewerUrl = computed(() => {
+  const url = currentUrl.value
+  if (!url) return ''
+  const fullUrl = url.startsWith('http') ? url : (window.location.origin + url)
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fullUrl)}`
+})
+
+// 文本预览内容
+const textContent = ref('')
+let textFetchAbort = null
 
 // ========== 图片缩放 / 拖拽 ==========
 const scale = ref(1)
@@ -267,6 +327,33 @@ function onKeydown(e) {
   }
 }
 
+// ========== 文本文件读取 ==========
+async function fetchTextContent(url) {
+  if (textFetchAbort) textFetchAbort = false
+  textContent.value = ''
+  try {
+    const res = await request.get(url.startsWith('/api') ? url : new URL(url).pathname, {
+      responseType: 'text'
+    })
+    if (typeof res === 'string') {
+      textContent.value = res
+    } else {
+      textContent.value = '[无法读取文本内容]'
+    }
+  } catch {
+    textContent.value = '[文本文件读取失败]'
+  }
+}
+
+// 监听当前文件变化，自动加载 TXT 内容
+watch(currentFile, (file) => {
+  if (file && isTxt.value) {
+    fetchTextContent(currentUrl.value)
+  } else {
+    textContent.value = ''
+  }
+})
+
 // ========== 生命周期 ==========
 watch(() => props.modelValue, (val) => {
   if (val) {
@@ -279,6 +366,7 @@ watch(() => props.modelValue, (val) => {
   } else {
     visible.value = false
     document.body.style.overflow = ''
+    textContent.value = ''
   }
 }, { immediate: true })
 
@@ -410,6 +498,40 @@ onBeforeUnmount(() => {
   height: 100%;
   border: none;
   background: #525659;
+}
+
+/* --- 文本预览 --- */
+.fs-text-viewer {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 24px 40px;
+  background: #1e1e2e;
+}
+.fs-text-viewer pre {
+  color: #cdd6f4;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- 视频 --- */
+.fs-video-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+.fs-video {
+  max-width: 100%;
+  max-height: 100%;
+  outline: none;
 }
 
 /* --- 不支持预览 --- */
