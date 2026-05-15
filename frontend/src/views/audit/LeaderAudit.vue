@@ -2,7 +2,7 @@
   <div>
     <h2>领导审核</h2>
 
-    <el-table :data="list" border stripe v-loading="loading" @row-click="handleRowClick"
+    <el-table :data="list" stripe v-loading="loading" @row-click="handleRowClick"
               :row-class-name="rowClassName">
       <el-table-column prop="competitionName" label="竞赛名称" min-width="160" />
       <el-table-column prop="category" label="类别" width="70" />

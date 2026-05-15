@@ -41,7 +41,7 @@
 
     <!-- 表格 -->
     <el-card>
-      <el-table :data="list" v-loading="loading" stripe border style="width:100%;">
+      <el-table :data="list" v-loading="loading" stripe style="width:100%">
         <el-table-column label="成果类型" width="110">
           <template #default="{ row }">
             <el-tag :type="typeTag(row.type)">{{ row.typeLabel }}</el-tag>

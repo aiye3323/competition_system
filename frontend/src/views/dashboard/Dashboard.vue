@@ -1,83 +1,87 @@
 <template>
   <div>
     <!-- 统计卡片 -->
-    <el-row :gutter="16" class="stat-row">
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card" style="border-top-color:#409eff;">
+    <div class="stat-grid">
+      <div class="stat-item">
+        <div class="stat-icon stat-icon--blue">
+          <el-icon :size="22"><Trophy /></el-icon>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value">{{ stats.totalCompetitions }}</div>
           <div class="stat-label">竞赛成果</div>
-          <div class="stat-value" style="color:#409eff;">{{ stats.totalCompetitions }}</div>
-          <el-icon :size="22" color="#409eff"><Trophy /></el-icon>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card" style="border-top-color:#67c23a;">
+        </div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon stat-icon--green">
+          <el-icon :size="22"><Folder /></el-icon>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value">{{ stats.totalProjects }}</div>
           <div class="stat-label">创新项目</div>
-          <div class="stat-value" style="color:#67c23a;">{{ stats.totalProjects }}</div>
-          <el-icon :size="22" color="#67c23a"><Folder /></el-icon>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card" style="border-top-color:#e6a23c;">
+        </div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon stat-icon--amber">
+          <el-icon :size="22"><Document /></el-icon>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value">{{ stats.totalPapers }}</div>
           <div class="stat-label">学术论文</div>
-          <div class="stat-value" style="color:#e6a23c;">{{ stats.totalPapers }}</div>
-          <el-icon :size="22" color="#e6a23c"><Document /></el-icon>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card" style="border-top-color:#8b5cf6;">
+        </div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon stat-icon--purple">
+          <el-icon :size="22"><Stamp /></el-icon>
+        </div>
+        <div class="stat-body">
+          <div class="stat-value">{{ stats.totalSoftware }}</div>
           <div class="stat-label">软件著作</div>
-          <div class="stat-value" style="color:#8b5cf6;">{{ stats.totalSoftware }}</div>
-          <el-icon :size="22" color="#8b5cf6"><Stamp /></el-icon>
-        </el-card>
+        </div>
+      </div>
+      <div class="stat-item stat-item--total">
+        <div class="stat-total-value">{{ stats.totalAchievements }}</div>
+        <div class="stat-total-label">成果总计</div>
+      </div>
+    </div>
+
+    <!-- 图表行 -->
+    <el-row :gutter="20" class="chart-row">
+      <el-col :span="12">
+        <div class="chart-card">
+          <h3 class="chart-title">成果类型分布</h3>
+          <div ref="pieChartRef" class="chart-box"></div>
+        </div>
       </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover" class="stat-card" style="border-top-color:#f56c6c;">
-          <div class="stat-label">成果总计</div>
-          <div class="stat-value" style="color:#f56c6c;">{{ stats.totalAchievements }}</div>
-          <el-icon :size="22" color="#f56c6c"><DataAnalysis /></el-icon>
-        </el-card>
+      <el-col :span="12">
+        <div class="chart-card">
+          <h3 class="chart-title">年度成果趋势</h3>
+          <div ref="yearChartRef" class="chart-box"></div>
+        </div>
       </el-col>
     </el-row>
 
-    <!-- 图表行1：饼图 + 柱状图 -->
     <el-row :gutter="20" class="chart-row">
       <el-col :span="12">
-        <el-card shadow="hover">
-          <template #header><span class="chart-title">成果类型分布</span></template>
-          <div ref="pieChartRef" class="chart-container"></div>
-        </el-card>
+        <div class="chart-card">
+          <h3 class="chart-title">学院成果分布</h3>
+          <div ref="collegeChartRef" class="chart-box-sm"></div>
+        </div>
       </el-col>
       <el-col :span="12">
-        <el-card shadow="hover">
-          <template #header><span class="chart-title">年度成果趋势</span></template>
-          <div ref="yearChartRef" class="chart-container"></div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 图表行2：学院分布 + 级别分布 -->
-    <el-row :gutter="20" class="chart-row">
-      <el-col :span="12">
-        <el-card shadow="hover">
-          <template #header><span class="chart-title">学院成果分布</span></template>
-          <div ref="collegeChartRef" class="chart-container-sm"></div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card shadow="hover">
-          <template #header><span class="chart-title">竞赛获奖级别 / 项目期刊级别</span></template>
-          <div ref="levelChartRef" class="chart-container-sm"></div>
-        </el-card>
+        <div class="chart-card">
+          <h3 class="chart-title">获奖 / 项目 / 期刊级别</h3>
+          <div ref="levelChartRef" class="chart-box-sm"></div>
+        </div>
       </el-col>
     </el-row>
 
     <!-- 最近成果 -->
-    <el-card shadow="hover">
-      <template #header><span class="chart-title">最近归档成果</span></template>
-      <el-table :data="stats.recentItems" stripe style="width:100%;">
+    <div class="chart-card">
+      <h3 class="chart-title">最近归档成果</h3>
+      <el-table :data="stats.recentItems" stripe style="width:100%">
         <el-table-column prop="typeLabel" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="typeTag(row.type)">{{ row.typeLabel }}</el-tag>
+            <el-tag :type="typeTag(row.type)" size="small" effect="plain">{{ row.typeLabel }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="title" label="名称" show-overflow-tooltip />
@@ -90,14 +94,14 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Trophy, Folder, Document, DataAnalysis, Stamp } from '@element-plus/icons-vue'
+import { Trophy, Folder, Document, Stamp } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getDashboardStats } from '@/api/statistics'
 
@@ -116,6 +120,8 @@ const levelChartRef = ref(null)
 
 let pieChart = null, yearChart = null, collegeChart = null, levelChart = null
 
+const CHART_COLORS = ['#4C51BF', '#059669', '#D97706', '#7C3AED']
+
 function initCharts() {
   if (!stats.value.totalAchievements && !stats.value.byType.length) return
   initPieChart()
@@ -130,12 +136,12 @@ function initPieChart() {
   pieChart = echarts.init(pieChartRef.value)
   pieChart.setOption({
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    legend: { bottom: 0 },
+    legend: { bottom: 0, textStyle: { color: '#4B5563' } },
     series: [{
-      type: 'pie', radius: ['45%', '70%'], center: ['50%', '50%'],
-      label: { show: true, formatter: '{b}\n{d}%' },
+      type: 'pie', radius: ['48%', '72%'], center: ['50%', '48%'],
+      label: { show: true, formatter: '{b}\n{d}%', color: '#4B5563', fontSize: 12 },
       data: (stats.value.byType || []).map(t => ({ name: t.label, value: t.count })),
-      itemStyle: { color: params => ['#409eff', '#67c23a', '#e6a23c', '#8b5cf6'][params.dataIndex] }
+      itemStyle: { color: params => CHART_COLORS[params.dataIndex] }
     }]
   })
 }
@@ -147,15 +153,15 @@ function initYearChart() {
   const years = (stats.value.byYear || []).map(y => String(y.year))
   yearChart.setOption({
     tooltip: { trigger: 'axis' },
-    legend: { bottom: 0 },
-    grid: { left: 50, right: 20, bottom: 30, top: 20 },
-    xAxis: { type: 'category', data: years },
-    yAxis: { type: 'value', minInterval: 1 },
+    legend: { bottom: 0, textStyle: { color: '#4B5563' } },
+    grid: { left: 48, right: 16, bottom: 32, top: 16 },
+    xAxis: { type: 'category', data: years, axisLine: { lineStyle: { color: '#E8E4DF' } }, axisLabel: { color: '#4B5563' } },
+    yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F0EDE9' } }, axisLabel: { color: '#9CA3AF' } },
     series: [
-      { name: '竞赛', type: 'bar', data: (stats.value.byYear || []).map(y => y.competitions), itemStyle: { color: '#409eff' } },
-      { name: '项目', type: 'bar', data: (stats.value.byYear || []).map(y => y.projects), itemStyle: { color: '#67c23a' } },
-      { name: '论文', type: 'bar', data: (stats.value.byYear || []).map(y => y.papers), itemStyle: { color: '#e6a23c' } },
-      { name: '软著', type: 'bar', data: (stats.value.byYear || []).map(y => y.software || 0), itemStyle: { color: '#8b5cf6' } }
+      { name: '竞赛', type: 'bar', data: (stats.value.byYear || []).map(y => y.competitions), itemStyle: { color: CHART_COLORS[0], borderRadius: [4, 4, 0, 0] }, barMaxWidth: 32 },
+      { name: '项目', type: 'bar', data: (stats.value.byYear || []).map(y => y.projects), itemStyle: { color: CHART_COLORS[1], borderRadius: [4, 4, 0, 0] }, barMaxWidth: 32 },
+      { name: '论文', type: 'bar', data: (stats.value.byYear || []).map(y => y.papers), itemStyle: { color: CHART_COLORS[2], borderRadius: [4, 4, 0, 0] }, barMaxWidth: 32 },
+      { name: '软著', type: 'bar', data: (stats.value.byYear || []).map(y => y.software || 0), itemStyle: { color: CHART_COLORS[3], borderRadius: [4, 4, 0, 0] }, barMaxWidth: 32 }
     ]
   })
 }
@@ -167,15 +173,15 @@ function initCollegeChart() {
   const keys = Object.keys(stats.value.byCollege || {})
   const values = Object.values(stats.value.byCollege || {})
   if (!keys.length) {
-    collegeChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } } })
+    collegeChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9CA3AF', fontSize: 14 } } })
     return
   }
   collegeChart.setOption({
     tooltip: { trigger: 'axis' },
-    grid: { left: 150, right: 30, bottom: 20, top: 20 },
-    xAxis: { type: 'value', minInterval: 1 },
-    yAxis: { type: 'category', data: keys },
-    series: [{ type: 'bar', data: values, itemStyle: { color: '#409eff' }, label: { show: true, position: 'right' } }]
+    grid: { left: 140, right: 40, bottom: 16, top: 16 },
+    xAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F0EDE9' } }, axisLabel: { color: '#9CA3AF' } },
+    yAxis: { type: 'category', data: keys, axisLine: { lineStyle: { color: '#E8E4DF' } }, axisLabel: { color: '#4B5563' } },
+    series: [{ type: 'bar', data: values, itemStyle: { color: '#4C51BF', borderRadius: [0, 4, 4, 0] }, barMaxWidth: 20, label: { show: true, position: 'right', color: '#4B5563' } }]
   })
 }
 
@@ -191,7 +197,7 @@ function initLevelChart() {
   const journalValues = Object.values(stats.value.byJournalLevel || {})
 
   if (!awardKeys.length && !projKeys.length && !journalKeys.length) {
-    levelChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } } })
+    levelChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9CA3AF', fontSize: 14 } } })
     return
   }
 
@@ -209,14 +215,14 @@ function initLevelChart() {
 
   levelChart.setOption({
     tooltip: { trigger: 'axis' },
-    legend: { bottom: 0, data: ['竞赛获奖', '创新项目', '学术论文'] },
-    grid: { left: 150, right: 30, bottom: 30, top: 20 },
-    xAxis: { type: 'value', minInterval: 1 },
-    yAxis: { type: 'category', data: categories },
+    legend: { bottom: 0, textStyle: { color: '#4B5563' }, data: ['竞赛获奖', '创新项目', '学术论文'] },
+    grid: { left: 140, right: 40, bottom: 32, top: 16 },
+    xAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F0EDE9' } }, axisLabel: { color: '#9CA3AF' } },
+    yAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: '#E8E4DF' } }, axisLabel: { color: '#4B5563' } },
     series: [
-      { name: '竞赛获奖', type: 'bar', data: awardData, itemStyle: { color: '#409eff' }, label: { show: true, position: 'right' } },
-      { name: '创新项目', type: 'bar', data: projData, itemStyle: { color: '#67c23a' }, label: { show: true, position: 'right' } },
-      { name: '学术论文', type: 'bar', data: paperData, itemStyle: { color: '#e6a23c' }, label: { show: true, position: 'right' } }
+      { name: '竞赛获奖', type: 'bar', data: awardData, itemStyle: { color: CHART_COLORS[0], borderRadius: [0, 4, 4, 0] }, barMaxWidth: 16, label: { show: true, position: 'right', color: '#4B5563', fontSize: 11 } },
+      { name: '创新项目', type: 'bar', data: projData, itemStyle: { color: CHART_COLORS[1], borderRadius: [0, 4, 4, 0] }, barMaxWidth: 16, label: { show: true, position: 'right', color: '#4B5563', fontSize: 11 } },
+      { name: '学术论文', type: 'bar', data: paperData, itemStyle: { color: CHART_COLORS[2], borderRadius: [0, 4, 4, 0] }, barMaxWidth: 16, label: { show: true, position: 'right', color: '#4B5563', fontSize: 11 } }
     ]
   })
 }
@@ -249,35 +255,113 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.stat-row {
-  margin-bottom: 20px;
+/* 统计卡片网格 */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1.2fr;
+  gap: 16px;
+  margin-bottom: 24px;
 }
-.stat-card {
-  text-align: center;
-  border-top: 4px solid;
+
+.stat-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: box-shadow var(--transition-normal);
 }
+
+.stat-item:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.stat-item--total {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  justify-content: center;
+}
+
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon--blue   { background: #EEF2FF; color: #4C51BF; }
+.stat-icon--green  { background: #ECFDF5; color: #059669; }
+.stat-icon--amber  { background: #FFFBEB; color: #D97706; }
+.stat-icon--purple { background: #F5F3FF; color: #7C3AED; }
+
+.stat-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
 .stat-label {
   font-size: 13px;
   color: var(--text-secondary);
+  margin-top: 2px;
+  font-weight: 500;
 }
-.stat-value {
-  font-size: 30px;
-  font-weight: bold;
-  margin: 8px 0;
+
+.stat-total-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
-.chart-title {
-  font-weight: bold;
-  color: var(--text-primary);
+
+.stat-total-label {
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  font-weight: 500;
 }
-.chart-container {
-  width: 100%;
-  height: 350px;
-}
-.chart-container-sm {
-  width: 100%;
-  height: 300px;
-}
+
+/* 图表卡片 */
 .chart-row {
   margin-bottom: 20px;
+}
+
+.chart-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+}
+
+.chart-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+.chart-box {
+  width: 100%;
+  height: 340px;
+}
+
+.chart-box-sm {
+  width: 100%;
+  height: 290px;
 }
 </style>

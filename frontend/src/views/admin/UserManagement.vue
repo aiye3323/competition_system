@@ -22,7 +22,7 @@
       </el-form>
     </el-card>
 
-    <el-table :data="users" v-loading="loading" stripe border style="border-radius:12px;">
+    <el-table :data="users" v-loading="loading" stripe>
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="username" label="用户名" width="100" />
       <el-table-column prop="realName" label="姓名" width="90" />

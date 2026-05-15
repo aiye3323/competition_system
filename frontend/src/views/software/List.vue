@@ -2,15 +2,14 @@
   <div>
     <div class="page-header">
       <h2>软件著作权</h2>
-      <div>
-        <el-button @click="handleExport" :loading="exportLoading">导出Excel</el-button>
-        <el-button type="primary" @click="$router.push('/software/submit')">
-          <el-icon><Plus /></el-icon> 提交软著
-        </el-button>
+      <div class="header-actions">
+        <el-button @click="handleExport" :loading="exportLoading">导出 Excel</el-button>
+        <el-button type="primary" @click="$router.push('/software/submit')">提交软著</el-button>
       </div>
     </div>
 
-    <el-card style="margin-bottom:20px;">
+    <div class="card-wrapper">
+      <el-card>
       <el-form :inline="true" :model="filters">
         <el-form-item label="登记号">
           <el-input v-model="filters.registrationNumber" placeholder="搜索登记号" clearable style="width:200px;" />
@@ -28,10 +27,11 @@
           <el-button @click="resetFilters">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+      </el-card>
+    </div>
 
     <el-card>
-      <el-table :data="list" v-loading="loading" stripe border style="width:100%;">
+      <el-table :data="list" v-loading="loading" stripe style="width:100%">
         <el-table-column prop="softwareName" label="软件名称" show-overflow-tooltip />
         <el-table-column prop="registrationNumber" label="登记号" width="160" />
         <el-table-column prop="affiliation" label="所属单位" width="100" />

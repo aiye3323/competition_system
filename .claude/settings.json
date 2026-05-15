@@ -1,34 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(taskkill //F //PID 20364)",
-      "Bash(node -e ' *)",
-      "Bash(curl -s -X POST http://localhost:5173/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"student1\",\"password\":\"123456\"}')",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\('Login OK, role:',r.data.userInfo.role\\)}\\)\")",
-      "Bash(\"C:/Program Files/MySQL/MySQL Server 5.7/bin/mysql.exe\" -u root -p123456 --default-character-set=utf8mb4 competition_db)",
-      "Bash(\"C:/Program Files/MySQL/MySQL Server 5.7/bin/mysql.exe\" -u root -p123456 --default-character-set=utf8mb4 competition_db -e \"SELECT f_status, COUNT\\(*\\) AS cnt FROM t_competition GROUP BY f_status; SELECT f_status, COUNT\\(*\\) AS cnt FROM t_project GROUP BY f_status; SELECT f_status, COUNT\\(*\\) AS cnt FROM t_paper GROUP BY f_status;\")",
-      "Bash(\"C:/Program Files/MySQL/MySQL Server 5.7/bin/mysql.exe\" -u root -p123456 competition_db -e \"SELECT f_id, f_username, f_real_name, f_role FROM t_user WHERE f_is_deleted=0 ORDER BY f_id;\")",
-      "Bash(\"C:/Program Files/MySQL/MySQL Server 5.7/bin/mysql.exe\" -u root -p123456 competition_db -e \"SELECT f_username, f_password FROM t_user WHERE f_username='admin';\")",
-      "Bash(curl -s http://localhost:8080/api/test)",
-      "Bash(curl -s -H \"Authorization: Bearer test\" http://localhost:8080/api/competition/1)",
-      "Bash(python3 -m json.tool)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git status)"
-    ]
-  },
-  "enableAllProjectMcpServers": true,
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd \"e:/大三/企业级应用开发/competition_system\" && git add -A && git diff --cached --quiet || git commit -m \"auto: 代码变更\" --no-verify"
-          }
-        ]
-      }
+      "Bash(node \"e:/大三/企业级应用开发/competition_system/.agents/skills/impeccable/scripts/load-context.mjs\")",
+      "Bash(git branch *)"
     ]
   }
 }

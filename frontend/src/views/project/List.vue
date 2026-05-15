@@ -2,39 +2,42 @@
   <div>
     <div class="page-header">
       <h2>创新训练项目</h2>
-      <div>
-        <el-button @click="handleExport" :loading="exportLoading">导出Excel</el-button>
+      <div class="header-actions">
+        <el-button @click="handleExport" :loading="exportLoading">导出 Excel</el-button>
         <el-button type="primary" @click="$router.push('/project/submit')">新建项目</el-button>
       </div>
     </div>
 
-    <el-card style="margin-bottom:20px;">
-      <el-form :inline="true" :model="filters" size="default">
-        <el-form-item label="立项级别">
-          <el-select v-model="filters.projectLevel" placeholder="全部" clearable style="width:140px">
-            <el-option label="国家级" value="国家级" />
-            <el-option label="省级" value="省级" />
-            <el-option label="校级" value="校级" />
-            <el-option label="院级" value="院级" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="审核状态">
-          <el-select v-model="filters.status" placeholder="全部" clearable style="width:140px">
-            <el-option label="待审核" value="PENDING" />
-            <el-option label="领导审核中" value="PENDING_LEADER" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="已驳回" value="REJECTED" />
-            <el-option label="已归档" value="ARCHIVED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="fetchData">查询</el-button>
-          <el-button @click="resetFilters">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <div class="card-wrapper">
+      <el-card>
+        <el-form :inline="true" :model="filters" size="default">
+          <el-form-item label="立项级别">
+            <el-select v-model="filters.projectLevel" placeholder="全部" clearable style="width:140px">
+              <el-option label="国家级" value="国家级" />
+              <el-option label="省级" value="省级" />
+              <el-option label="校级" value="校级" />
+              <el-option label="院级" value="院级" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="审核状态">
+            <el-select v-model="filters.status" placeholder="全部" clearable style="width:140px">
+              <el-option label="待审核" value="PENDING" />
+              <el-option label="领导审核中" value="PENDING_LEADER" />
+              <el-option label="已通过" value="APPROVED" />
+              <el-option label="已驳回" value="REJECTED" />
+              <el-option label="已归档" value="ARCHIVED" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="fetchData">查询</el-button>
+            <el-button @click="resetFilters">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+    </div>
 
-    <el-table :data="list" border stripe v-loading="loading">
+    <el-card>
+      <el-table :data="list" stripe v-loading="loading">
       <el-table-column prop="projectName" label="项目名称" min-width="180" />
       <el-table-column prop="projectLevel" label="立项级别" width="100" />
       <el-table-column prop="projectType" label="立项类型" width="120" />
@@ -59,10 +62,11 @@
       </el-table-column>
     </el-table>
 
-    <div class="pagination-wrapper">
-      <el-pagination v-model:current-page="page" v-model:page-size="size" :total="total"
-        :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="fetchData" />
-    </div>
+      <div class="pagination-wrapper">
+        <el-pagination v-model:current-page="page" v-model:page-size="size" :total="total"
+          :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="fetchData" />
+      </div>
+    </el-card>
 
     <AuditDialog
       v-model:visible="auditVisible"

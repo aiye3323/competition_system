@@ -34,7 +34,7 @@
     </el-card>
 
     <!-- Table -->
-    <el-table :data="list" border stripe v-loading="loading" style="border-radius:12px;">
+    <el-table :data="list" stripe v-loading="loading">
       <el-table-column label="成果类型" width="100">
         <template #default="{ row }">
           <el-tag :type="typeTag(row.type)" size="small">{{ typeLabel(row.type) }}</el-tag>

@@ -21,7 +21,7 @@
       </el-form>
     </el-card>
 
-    <el-table :data="list" border stripe v-loading="loading">
+    <el-table :data="list" stripe v-loading="loading">
       <el-table-column prop="operateTime" label="操作时间" width="170">
         <template #default="{ row }">{{ formatTime(row.operateTime) }}</template>
       </el-table-column>

@@ -2,13 +2,14 @@
   <div>
     <div class="page-header">
       <h2>论文成果</h2>
-      <div>
-        <el-button @click="handleExport" :loading="exportLoading">导出Excel</el-button>
+      <div class="header-actions">
+        <el-button @click="handleExport" :loading="exportLoading">导出 Excel</el-button>
         <el-button type="primary" @click="$router.push('/paper/submit')">提交论文</el-button>
       </div>
     </div>
 
-    <el-card style="margin-bottom:20px;">
+    <div class="card-wrapper">
+      <el-card>
       <el-form :inline="true" :model="filters" size="default">
         <el-form-item label="期刊级别">
           <el-select v-model="filters.journalLevel" placeholder="全部" clearable style="width:150px">
@@ -38,9 +39,11 @@
           <el-button @click="resetFilters">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+      </el-card>
+    </div>
 
-    <el-table :data="list" border stripe v-loading="loading">
+    <el-card>
+      <el-table :data="list" stripe v-loading="loading">
       <el-table-column prop="title" label="论文标题" min-width="200" />
       <el-table-column prop="journalLevel" label="期刊级别" width="120" />
       <el-table-column prop="journalName" label="期刊/会议名称" min-width="150" />
@@ -64,10 +67,11 @@
       </el-table-column>
     </el-table>
 
-    <div class="pagination-wrapper">
-      <el-pagination v-model:current-page="page" v-model:page-size="size" :total="total"
-        :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="fetchData" />
-    </div>
+      <div class="pagination-wrapper">
+        <el-pagination v-model:current-page="page" v-model:page-size="size" :total="total"
+          :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="fetchData" />
+      </div>
+    </el-card>
 
     <AuditDialog
       v-model:visible="auditVisible"

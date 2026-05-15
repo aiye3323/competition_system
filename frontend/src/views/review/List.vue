@@ -17,7 +17,7 @@
       </el-form>
     </el-card>
 
-    <el-table :data="list" border stripe v-loading="loading">
+    <el-table :data="list" stripe v-loading="loading">
       <el-table-column prop="competitionName" label="竞赛名称" min-width="180" />
       <el-table-column prop="category" label="类别" width="80" />
       <el-table-column prop="awardLevel" label="获奖级别" width="100" />
